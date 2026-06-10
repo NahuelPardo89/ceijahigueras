@@ -8,6 +8,10 @@ function getErrorCode(err: unknown): string | null {
 }
 
 const errorMap: Record<string, Partial<Record<ErrorContext, string>>> = {
+  'permission-denied': {
+    generic: 'No tienes permisos para realizar esta acción. Contacta al administrador.',
+    signUp: 'Error de permisos al crear el usuario. Verifica que tu cuenta tiene rol de Administrador.',
+  },
   'auth/user-not-found': {
     signIn: 'Credenciales incorrectas. Verifica tu correo y contraseña.',
     resetPassword: 'No existe ninguna cuenta asociada a este correo.',

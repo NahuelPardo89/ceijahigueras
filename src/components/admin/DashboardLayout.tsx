@@ -2,6 +2,7 @@ import { useState, useMemo } from 'react';
 import { Users, GraduationCap, BarChart3, FileText, LogOut } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 import { UserManagement } from './UserManagement';
+import { StudentManagement } from './StudentManagement';
 import { SectionPlaceholder } from './SectionPlaceholder';
 
 type Section = 'usuarios' | 'estudiantes' | 'calificaciones' | 'documentacion';
@@ -43,6 +44,8 @@ export const DashboardLayout = () => {
     switch (currentSection) {
       case 'usuarios':
         return <UserManagement />;
+      case 'estudiantes':
+        return <StudentManagement />;
       default:
         return (
           <SectionPlaceholder
