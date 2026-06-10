@@ -21,6 +21,7 @@ const calcularEdad = (fechaNacimiento: string): number => {
 };
 
 const gestionLabel: Record<string, string> = {
+  'sin cargar': 'Sin Cargar',
   cargado: 'Cargado',
   'pase solicitado': 'Pase Solicitado',
   invalido: 'Inválido',

@@ -27,11 +27,13 @@ const INITIAL_FORM: UserFormData = {
   role: 'Profesor',
 };
 
+type SubmitStatus = { type: 'success'; msg: string } | { type: 'error'; msg: string } | null;
+
 export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFormModalProps) => {
   const { createUser, updateUser, loading, clearError } = useAuth();
   const [form, setForm] = useState<UserFormData>(initialData ?? INITIAL_FORM);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [successMsg, setSuccessMsg] = useState<string | null>(null);
+  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const isEdit = mode === 'edit';
@@ -47,23 +49,20 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLocalError(null);
-    setSuccessMsg(null);
+    setSubmitStatus(null);
 
     if (!form.displayName.trim()) {
       setLocalError('El nombre es obligatorio.');
       return;
     }
-
     if (!isEdit && !form.password.trim()) {
       setLocalError('La contraseña es obligatoria.');
       return;
     }
-
     if (!isEdit && form.password.length < 6) {
       setLocalError('La contraseña debe tener al menos 6 caracteres.');
       return;
     }
-
     if (!EMAIL_REGEX.test(form.email.trim())) {
       setLocalError('Ingresa un correo electrónico válido.');
       return;
@@ -75,14 +74,12 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
           displayName: form.displayName,
           role: form.role,
         });
-        setSuccessMsg('Usuario actualizado exitosamente ✅');
       } else {
         await createUser(form.email, form.password, form.displayName, form.role);
-        setSuccessMsg('Usuario creado exitosamente ✅');
       }
-      setTimeout(() => onSuccess(), 1500);
+      setSubmitStatus({ type: 'success', msg: isEdit ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente' });
     } catch (err) {
-      setLocalError(getFirebaseErrorMessage(err, isEdit ? 'generic' : 'signUp'));
+      setSubmitStatus({ type: 'error', msg: getFirebaseErrorMessage(err, isEdit ? 'generic' : 'signUp') });
     }
   };
 
@@ -91,26 +88,37 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
       <div className="modal-card" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{isEdit ? 'Editar Usuario' : 'Agregar Usuario'}</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={!successMsg && loading}>
+          <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={loading && !submitStatus}>
             <X size={20} />
           </button>
         </div>
 
-        {successMsg && (
-          <div className="alert alert-success" role="status">
-            <CheckCircle size={20} style={{ flexShrink: 0 }} aria-hidden="true" />
-            <span>{successMsg}</span>
-          </div>
-        )}
-
-        {localError && !successMsg && (
-          <div className="alert alert-danger" role="alert" aria-live="assertive">
-            <AlertCircle size={20} style={{ flexShrink: 0 }} aria-hidden="true" />
+        {localError && !submitStatus && (
+          <div className="alert alert-danger" role="alert">
+            <AlertCircle size={20} style={{ flexShrink: 0 }} />
             <span>{localError}</span>
           </div>
         )}
 
-        {!successMsg && (
+        {submitStatus ? (
+          <div style={{ textAlign: 'center', padding: '30px 0' }}>
+            {submitStatus.type === 'success' ? (
+              <CheckCircle size={64} style={{ color: 'var(--color-success)', marginBottom: '16px' }} />
+            ) : (
+              <AlertCircle size={64} style={{ color: 'var(--color-danger)', marginBottom: '16px' }} />
+            )}
+            <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '24px' }}>
+              {submitStatus.msg}
+            </p>
+            <button
+              className="btn-submit"
+              onClick={submitStatus.type === 'success' ? onSuccess : () => setSubmitStatus(null)}
+              style={{ width: 'auto', padding: '10px 28px' }}
+            >
+              {submitStatus.type === 'success' ? 'Volver al listado' : 'Intentar de nuevo'}
+            </button>
+          </div>
+        ) : (
           <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label className="form-label" htmlFor="modal-name">Nombre Completo</label>
@@ -124,6 +132,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
                   onChange={e => handleChange('displayName', e.target.value)}
                   disabled={loading}
                   autoComplete="name"
+                  style={{ paddingLeft: '16px' }}
                 />
               </div>
             </div>
@@ -140,6 +149,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
                   onChange={e => handleChange('email', e.target.value)}
                   disabled={loading || isEdit}
                   autoComplete="email"
+                  style={{ paddingLeft: '16px' }}
                 />
               </div>
             </div>
@@ -157,7 +167,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
                     onChange={e => handleChange('password', e.target.value)}
                     disabled={loading}
                     autoComplete="new-password"
-                    style={{ paddingRight: '48px' }}
+                    style={{ paddingRight: '48px', paddingLeft: '16px' }}
                   />
                   <button
                     type="button"

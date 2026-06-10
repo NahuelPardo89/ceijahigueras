@@ -10,7 +10,7 @@ const AppContent = () => {
   const { user, loading } = useAuth();
   const [view, setView] = useState<'login' | 'forgot-password'>('login');
 
-  if (loading) {
+  if (loading && !user) {
     return (
       <div className="loader-container">
         <div className="pulse-loader"></div>

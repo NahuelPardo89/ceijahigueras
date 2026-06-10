@@ -6,7 +6,7 @@ import { useAuth } from './useAuth';
 export type StudentStatus = 'activo' | 'inactivo';
 export type StudentModality = 'virtual' | 'presencial';
 export type StudentPlan = 'Plan A' | 'Plan B' | 'Plan C';
-export type StudentGestion = 'cargado' | 'pase solicitado' | 'invalido';
+export type StudentGestion = 'sin cargar' | 'cargado' | 'pase solicitado' | 'invalido';
 
 export interface StudentRecord {
   id: string;
