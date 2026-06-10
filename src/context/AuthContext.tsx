@@ -1,226 +1,165 @@
-import React, { createContext, useState, useEffect } from 'react';
-import { 
-  signInWithEmailAndPassword, 
-  createUserWithEmailAndPassword, 
-  signOut as firebaseSignOut, 
+/* eslint-disable react-refresh/only-export-components */
+import { createContext, useState, useEffect, useMemo, useCallback, type ReactNode } from 'react';
+import {
+  signInWithEmailAndPassword,
+  createUserWithEmailAndPassword,
+  signOut as firebaseSignOut,
   sendPasswordResetEmail,
   onAuthStateChanged,
   updateProfile,
   GoogleAuthProvider,
   signInWithPopup
 } from 'firebase/auth';
-import { auth, isMockMode } from '../firebase/config';
+import {
+  doc,
+  getDoc,
+  setDoc,
+  updateDoc,
+  collection,
+  getDocs,
+  query,
+  limit
+} from 'firebase/firestore';
+import { auth, db, API_KEY } from '../firebase/config';
+import { getFirebaseErrorMessage } from '../utils/errors';
 
-// Interfaz unificada de usuario
+export type UserRole = 'Administrador' | 'Profesor';
+
 export interface AuthUser {
   uid: string;
   email: string | null;
   displayName: string | null;
   photoURL?: string | null;
   createdAt?: string;
+  role: UserRole;
+  disabled?: boolean;
+}
+
+export interface UserRecord {
+  uid: string;
+  email: string | null;
+  displayName: string | null;
+  role: UserRole;
+  createdAt: string;
+  disabled?: boolean;
 }
 
 interface AuthContextType {
   user: AuthUser | null;
   loading: boolean;
   error: string | null;
-  isMockMode: boolean;
   signIn: (email: string, pass: string) => Promise<void>;
   signUp: (email: string, pass: string, name: string) => Promise<void>;
   signInWithGoogle: () => Promise<void>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<void>;
   clearError: () => void;
+  getAllUsers: () => Promise<UserRecord[]>;
+  updateUserRole: (uid: string, role: UserRole) => Promise<void>;
+  createUser: (email: string, password: string, displayName: string, role: UserRole) => Promise<void>;
+  updateUser: (uid: string, data: { displayName?: string; role?: UserRole }) => Promise<void>;
+  disableUser: (uid: string, disabled: boolean) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
 
-// Helper para simular latencia de red
-const sleep = (ms: number) => new Promise(resolve => setTimeout(resolve, ms));
+const REST_ERROR_MAP: Record<string, string> = {
+  'EMAIL_EXISTS': 'auth/email-already-in-use',
+  'WEAK_PASSWORD': 'auth/weak-password',
+  'INVALID_EMAIL': 'auth/invalid-email',
+  'OPERATION_NOT_ALLOWED': 'auth/operation-not-allowed',
+  'TOO_MANY_ATTEMPTS_TRY_LATER': 'auth/too-many-requests',
+};
 
-// Claves de localStorage para simular base de datos
-const MOCK_USERS_KEY = 'ceija_mock_users';
-const CURRENT_MOCK_USER_KEY = 'ceija_current_mock_user';
-
-export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children }) => {
+export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
 
-  // Escuchar estado de autenticación
-  useEffect(() => {
-    if (isMockMode) {
-      // Recuperar sesión mock guardada si existe
-      const savedUser = localStorage.getItem(CURRENT_MOCK_USER_KEY);
-      if (savedUser) {
-        setUser(JSON.parse(savedUser));
-      }
-      setLoading(false);
-    } else {
-      if (!auth) {
-        setError("Error: El cliente de Firebase no pudo inicializarse.");
-        setLoading(false);
-        return;
-      }
-      // Escuchar cambios reales de Firebase
-      const unsubscribe = onAuthStateChanged(auth, (firebaseUser) => {
-        if (firebaseUser) {
-          setUser({
-            uid: firebaseUser.uid,
-            email: firebaseUser.email,
-            displayName: firebaseUser.displayName,
-            photoURL: firebaseUser.photoURL,
-          });
-        } else {
-          setUser(null);
-        }
-        setLoading(false);
-      });
-      return unsubscribe;
-    }
-  }, []);
-
   const clearError = () => setError(null);
 
-  // Obtener usuarios guardados en local en Modo Mock
-  const getMockUsers = (): Array<{ email: string; pass: string; name: string; uid: string }> => {
-    const data = localStorage.getItem(MOCK_USERS_KEY);
-    const usersList = data ? JSON.parse(data) : [];
-    
-    // Asegurar que exista el usuario administrador predeterminado para pruebas
-    const hasAdmin = usersList.some((u: any) => u.email.toLowerCase() === 'admin@ceija.com');
-    if (!hasAdmin) {
-      const defaultAdmin = {
-        email: 'admin@ceija.com',
-        pass: 'admin123',
-        name: 'Administrador Ceija',
-        uid: 'mock-admin-uid-999'
-      };
-      usersList.push(defaultAdmin);
-      localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(usersList));
-    }
-    
-    return usersList;
-  };
+  useEffect(() => {
+    const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
+      if (firebaseUser) {
+        let role: UserRole = 'Profesor';
+        let docDisabled = false;
+        try {
+          const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
+          if (snap.exists()) {
+            const data = snap.data();
+            role = (data.role as UserRole) || 'Profesor';
+            docDisabled = data.disabled === true;
+          }
+        } catch (err) {
+          console.warn('No se pudo leer el rol desde Firestore, usando valor por defecto:', err);
+        }
 
-  // Implementación del inicio de sesión (Sign In)
+        if (docDisabled) {
+          setError('Tu cuenta ha sido desactivada. Contacta al administrador.');
+          await firebaseSignOut(auth);
+          setLoading(false);
+          return;
+        }
+
+        setUser({
+          uid: firebaseUser.uid,
+          email: firebaseUser.email,
+          displayName: firebaseUser.displayName,
+          photoURL: firebaseUser.photoURL,
+          role,
+          disabled: docDisabled,
+        });
+      } else {
+        setUser(null);
+      }
+      setLoading(false);
+    });
+    return unsubscribe;
+  }, []);
+
   const signIn = async (email: string, pass: string) => {
     setLoading(true);
     setError(null);
     try {
-      if (isMockMode) {
-        await sleep(1200); // Simular latencia de red
-        const users = getMockUsers();
-        const found = users.find(u => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (!found) {
-          throw new Error("auth/user-not-found");
-        }
-        if (found.pass !== pass) {
-          throw new Error("auth/wrong-password");
-        }
-        
-        const loggedUser: AuthUser = {
-          uid: found.uid,
-          email: found.email,
-          displayName: found.name,
-        };
-        localStorage.setItem(CURRENT_MOCK_USER_KEY, JSON.stringify(loggedUser));
-        setUser(loggedUser);
-      } else {
-        if (!auth) throw new Error("Firebase auth client is not initialized.");
-        await signInWithEmailAndPassword(auth, email, pass);
-      }
-    } catch (err: any) {
+      await signInWithEmailAndPassword(auth, email, pass);
+    } catch (err) {
       console.error(err);
-      let errorMsg = "Ocurrió un error inesperado al iniciar sesión.";
-      const errCode = err.code || err.message;
-      if (errCode === 'auth/user-not-found' || errCode === 'auth/wrong-password' || errCode === 'auth/invalid-credential') {
-        errorMsg = "Credenciales incorrectas. Verifica tu correo y contraseña.";
-      } else if (errCode === 'auth/invalid-email') {
-        errorMsg = "El formato de correo electrónico no es válido.";
-      } else if (errCode === 'auth/too-many-requests') {
-        errorMsg = "Demasiados intentos fallidos. Cuenta bloqueada temporalmente.";
-      }
-      setError(errorMsg);
+      setError(getFirebaseErrorMessage(err, 'signIn'));
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Implementación del registro de usuario (Sign Up)
   const signUp = async (email: string, pass: string, name: string) => {
     setLoading(true);
     setError(null);
     try {
-      if (isMockMode) {
-        await sleep(1500); // Simular guardado en base de datos
-        const users = getMockUsers();
-        const exists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
-        
-        if (exists) {
-          throw new Error("auth/email-already-in-use");
-        }
-        
-        const newUid = 'mock-uid-' + Math.random().toString(36).substring(2, 11);
-        const newUserRecord = { email, pass, name, uid: newUid };
-        users.push(newUserRecord);
-        localStorage.setItem(MOCK_USERS_KEY, JSON.stringify(users));
-        
-        const loggedUser: AuthUser = {
-          uid: newUid,
-          email: email,
+      const userCred = await createUserWithEmailAndPassword(auth, email, pass);
+      if (userCred.user) {
+        await updateProfile(userCred.user, { displayName: name });
+        await setDoc(doc(db, 'users', userCred.user.uid), {
+          email,
           displayName: name,
-          createdAt: new Date().toISOString()
-        };
-        
-        localStorage.setItem(CURRENT_MOCK_USER_KEY, JSON.stringify(loggedUser));
-        setUser(loggedUser);
-      } else {
-        if (!auth) throw new Error("Firebase auth client is not initialized.");
-        const userCred = await createUserWithEmailAndPassword(auth, email, pass);
-        if (userCred.user) {
-          await updateProfile(userCred.user, { displayName: name });
-          setUser({
-            uid: userCred.user.uid,
-            email: userCred.user.email,
-            displayName: name,
-            photoURL: userCred.user.photoURL,
-          });
-        }
+          role: 'Profesor' as UserRole,
+          createdAt: new Date().toISOString(),
+          disabled: false,
+        });
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      let errorMsg = "Ocurrió un error inesperado al registrar el usuario.";
-      const errCode = err.code || err.message;
-      if (errCode === 'auth/email-already-in-use') {
-        errorMsg = "Este correo electrónico ya está registrado.";
-      } else if (errCode === 'auth/weak-password') {
-        errorMsg = "La contraseña es muy débil. Debe tener al menos 6 caracteres.";
-      } else if (errCode === 'auth/invalid-email') {
-        errorMsg = "El correo electrónico ingresado no es válido.";
-      }
-      setError(errorMsg);
+      setError(getFirebaseErrorMessage(err, 'signUp'));
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Implementación del cierre de sesión (Sign Out)
   const signOut = async () => {
     setLoading(true);
     try {
-      if (isMockMode) {
-        await sleep(500);
-        localStorage.removeItem(CURRENT_MOCK_USER_KEY);
-        setUser(null);
-      } else {
-        if (!auth) throw new Error("Firebase auth client is not initialized.");
-        await firebaseSignOut(auth);
-      }
-    } catch (err: any) {
+      await firebaseSignOut(auth);
+    } catch (err) {
       console.error("Sign out error", err);
       setError("Error al cerrar sesión.");
     } finally {
@@ -228,89 +167,144 @@ export const AuthProvider: React.FC<{ children: React.ReactNode }> = ({ children
     }
   };
 
-  // Implementación de recuperación de contraseña
   const resetPassword = async (email: string) => {
     setLoading(true);
     setError(null);
     try {
-      if (isMockMode) {
-        await sleep(1000);
-        const users = getMockUsers();
-        const exists = users.some(u => u.email.toLowerCase() === email.toLowerCase());
-        if (!exists) {
-          throw new Error("auth/user-not-found");
-        }
-      } else {
-        if (!auth) throw new Error("Firebase auth client is not initialized.");
-        await sendPasswordResetEmail(auth, email);
-      }
-    } catch (err: any) {
+      await sendPasswordResetEmail(auth, email);
+    } catch (err) {
       console.error(err);
-      let errorMsg = "Error al intentar enviar el correo de recuperación.";
-      const errCode = err.code || err.message;
-      if (errCode === 'auth/user-not-found') {
-        errorMsg = "No existe ninguna cuenta asociada a este correo.";
-      } else if (errCode === 'auth/invalid-email') {
-        errorMsg = "El formato de correo electrónico no es válido.";
-      }
-      setError(errorMsg);
+      setError(getFirebaseErrorMessage(err, 'resetPassword'));
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
-  // Implementación del inicio de sesión con Google (Google Sign In)
   const signInWithGoogle = async () => {
     setLoading(true);
     setError(null);
     try {
-      if (isMockMode) {
-        await sleep(1000); // Simular latencia de red
-        const loggedUser: AuthUser = {
-          uid: 'mock-google-uid-' + Math.random().toString(36).substring(2, 11),
-          email: 'google.user@ceija.com',
-          displayName: 'Usuario Google Mock',
-          photoURL: 'https://lh3.googleusercontent.com/a/default-user'
-        };
-        localStorage.setItem(CURRENT_MOCK_USER_KEY, JSON.stringify(loggedUser));
-        setUser(loggedUser);
-      } else {
-        if (!auth) throw new Error("Firebase auth client is not initialized.");
-        const provider = new GoogleAuthProvider();
-        await signInWithPopup(auth, provider);
+      const provider = new GoogleAuthProvider();
+      const result = await signInWithPopup(auth, provider);
+      if (result.user) {
+        const snap = await getDoc(doc(db, 'users', result.user.uid));
+        if (!snap.exists()) {
+          await setDoc(doc(db, 'users', result.user.uid), {
+            email: result.user.email,
+            displayName: result.user.displayName,
+            role: 'Profesor' as UserRole,
+            createdAt: new Date().toISOString(),
+            disabled: false,
+          });
+        }
       }
-    } catch (err: any) {
+    } catch (err) {
       console.error(err);
-      let errorMsg = "Ocurrió un error al iniciar sesión con Google.";
-      const errCode = err.code || err.message;
-      if (errCode === 'auth/popup-closed-by-user') {
-        errorMsg = "El inicio de sesión fue cancelado al cerrar la ventana emergente.";
-      } else if (errCode === 'auth/cancelled-popup-request') {
-        errorMsg = "La solicitud de inicio de sesión fue cancelada.";
-      } else if (errCode === 'auth/popup-blocked') {
-        errorMsg = "El navegador bloqueó la ventana emergente de inicio de sesión.";
-      }
-      setError(errorMsg);
+      setError(getFirebaseErrorMessage(err, 'signInWithGoogle'));
       throw err;
     } finally {
       setLoading(false);
     }
   };
 
+  const getAllUsers = async (): Promise<UserRecord[]> => {
+    const q = query(collection(db, 'users'), limit(100));
+    const snap = await getDocs(q);
+    return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserRecord));
+  };
+
+  const updateUserRole = useCallback(async (uid: string, role: UserRole) => {
+    await updateDoc(doc(db, 'users', uid), { role });
+    if (user?.uid === uid) {
+      setUser(prev => prev ? { ...prev, role } : prev);
+    }
+  }, [user]);
+
+  const createUser = useCallback(async (email: string, password: string, displayName: string, role: UserRole) => {
+    if (user?.role !== 'Administrador') {
+      setError('No tienes permisos para crear usuarios.');
+      throw new Error('No autorizado');
+    }
+    setLoading(true);
+    setError(null);
+    try {
+      const response = await fetch(
+        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,
+        {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ email, password, displayName, returnSecureToken: true }),
+        }
+      );
+      const data = await response.json();
+      if (!response.ok) {
+        const restCode = data.error?.message as string;
+        const firebaseCode = REST_ERROR_MAP[restCode] || 'generic';
+        throw { code: firebaseCode };
+      }
+
+      await setDoc(doc(db, 'users', data.localId), {
+        email,
+        displayName,
+        role,
+        createdAt: new Date().toISOString(),
+        disabled: false,
+      });
+    } catch (err) {
+      console.error(err);
+      setError(getFirebaseErrorMessage(err, 'signUp'));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
+  const updateUser = useCallback(async (uid: string, data: { displayName?: string; role?: UserRole }) => {
+    const updates: Record<string, string> = {};
+    if (data.displayName !== undefined) updates.displayName = data.displayName;
+    if (data.role !== undefined) updates.role = data.role;
+    if (Object.keys(updates).length === 0) return;
+
+    await updateDoc(doc(db, 'users', uid), updates);
+    if (user?.uid === uid) {
+      setUser(prev => prev ? { ...prev, ...updates } as AuthUser : prev);
+    }
+  }, [user]);
+
+  const disableUser = useCallback(async (uid: string, disabled: boolean) => {
+    setError(null);
+    try {
+      await updateDoc(doc(db, 'users', uid), { disabled });
+      if (user?.uid === uid) {
+        await firebaseSignOut(auth);
+      }
+    } catch (err) {
+      console.error('Error al cambiar estado del usuario:', err);
+      setError('Error al actualizar el estado del usuario.');
+      throw err;
+    }
+  }, [user]);
+
+  const value = useMemo(() => ({
+    user,
+    loading,
+    error,
+    signIn,
+    signUp,
+    signInWithGoogle,
+    signOut,
+    resetPassword,
+    clearError,
+    getAllUsers,
+    updateUserRole,
+    createUser,
+    updateUser,
+    disableUser,
+  }), [user, loading, error, updateUserRole, createUser, updateUser, disableUser]);
+
   return (
-    <AuthContext.Provider value={{
-      user,
-      loading,
-      error,
-      isMockMode,
-      signIn,
-      signUp,
-      signInWithGoogle,
-      signOut,
-      resetPassword,
-      clearError
-    }}>
+    <AuthContext.Provider value={value}>
       {children}
     </AuthContext.Provider>
   );

@@ -1,13 +1,14 @@
-import React, { useState } from 'react';
+import { useState, type FormEvent } from 'react';
 import { useAuth } from '../hooks/useAuth';
 import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
+import { EMAIL_REGEX } from '../utils/constants';
 
 interface LoginProps {
   onSwitchView: (view: 'forgot-password') => void;
 }
 
-export const Login: React.FC<LoginProps> = ({ onSwitchView }) => {
-  const { signIn, signInWithGoogle, error, loading, isMockMode, clearError } = useAuth();
+export const Login = ({ onSwitchView }: LoginProps) => {
+  const { signIn, signInWithGoogle, error, loading, clearError } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [showPassword, setShowPassword] = useState(false);
@@ -18,14 +19,12 @@ export const Login: React.FC<LoginProps> = ({ onSwitchView }) => {
     clearError();
     try {
       await signInWithGoogle();
-    } catch (err: any) {
-      // El error de Firebase ya está gestionado por el AuthContext
+    } catch {
+      // El error ya está gestionado por AuthContext
     }
   };
 
-  const EMAIL_REGEX = /^[a-zA-Z0-9._%+\-]+@[a-zA-Z0-9.\-]+\.[a-zA-Z]{2,}$/;
-
-  const handleSubmit = async (e: React.FormEvent) => {
+  const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLocalError(null);
     clearError();
@@ -42,32 +41,17 @@ export const Login: React.FC<LoginProps> = ({ onSwitchView }) => {
 
     try {
       await signIn(email, password);
-    } catch (err: any) {
-      // El error de Firebase ya está gestionado por el AuthContext
+    } catch {
+      // El error ya está gestionado por AuthContext
     }
   };
+
   return (
     <div className="auth-card">
       <div className="auth-header">
-        <div style={{ marginBottom: '12px' }}>
-          {isMockMode ? (
-            <span className="badge-mock">Modo Mock Activo</span>
-          ) : (
-            <span className="badge-firebase">Conectado a Firebase</span>
-          )}
-        </div>
         <h1>Iniciar Sesión</h1>
         <p>Accede a tu cuenta para continuar</p>
       </div>
-
-      {isMockMode && (
-        <div className="alert alert-info">
-          <AlertCircle size={20} style={{ flexShrink: 0 }} />
-          <span>
-            <strong>Sin configurar:</strong> Usa credenciales simuladas. Puedes iniciar sesión con el usuario de prueba predeterminado <code>admin@ceija.com</code> y contraseña <code>admin123</code>.
-          </span>
-        </div>
-      )}
 
       {(localError || error) && (
         <div className="alert alert-danger" role="alert" aria-live="assertive">
@@ -148,8 +132,8 @@ export const Login: React.FC<LoginProps> = ({ onSwitchView }) => {
       <div className="divider">o continuar con</div>
 
       <div className="social-buttons" style={{ gridTemplateColumns: '1fr' }}>
-        <button 
-          type="button" 
+        <button
+          type="button"
           className="btn-social"
           style={{ width: '100%' }}
           onClick={handleGoogleClick}

@@ -1,5 +1,6 @@
 import { initializeApp, getApp, getApps } from 'firebase/app';
-import { getAuth, type Auth } from 'firebase/auth';
+import { getAuth } from 'firebase/auth';
+import { getFirestore } from 'firebase/firestore';
 
 const firebaseConfig = {
   apiKey: import.meta.env.VITE_FIREBASE_API_KEY,
@@ -10,25 +11,9 @@ const firebaseConfig = {
   appId: import.meta.env.VITE_FIREBASE_APP_ID
 };
 
-// Determinar si debemos ejecutar la aplicación en Modo de Prueba (Mock Mode)
-const isMockMode = 
-  !firebaseConfig.apiKey || 
-  firebaseConfig.apiKey.includes('YOUR_API_KEY') || 
-  !firebaseConfig.authDomain ||
-  firebaseConfig.authDomain.includes('YOUR_AUTH_DOMAIN');
+export const API_KEY = firebaseConfig.apiKey;
 
-let auth: Auth | null = null;
+const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
 
-if (!isMockMode) {
-  try {
-    const app = getApps().length === 0 ? initializeApp(firebaseConfig) : getApp();
-    auth = getAuth(app);
-    console.log("Firebase inicializado con éxito.");
-  } catch (error) {
-    console.error("Error al inicializar Firebase. Activando Modo de Prueba.", error);
-  }
-} else {
-  console.log("Configuración de Firebase no detectada. Iniciando en Modo de Prueba.");
-}
-
-export { auth, isMockMode };
+export const auth = getAuth(app);
+export const db = getFirestore(app);
