@@ -9,8 +9,9 @@ import { UserFormModal } from './UserFormModal';
 
 export const UserManagement = () => {
   const { getAllUsers, updateUserRole, disableUser, user: currentUser } = useAuth();
+  const isAdmin = currentUser?.role === 'Administrador';
   const [users, setUsers] = useState<UserRecord[]>([]);
-  const [loadingUsers, setLoadingUsers] = useState(true);
+  const [loadingUsers, setLoadingUsers] = useState(isAdmin);
   const [updating, setUpdating] = useState<string | null>(null);
   const [feedback, setFeedback] = useState<{ uid: string; msg: string } | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
@@ -18,6 +19,7 @@ export const UserManagement = () => {
   const [editUser, setEditUser] = useState<UserRecord | null>(null);
 
   useEffect(() => {
+    if (!isAdmin) return;
     let cancelled = false;
     getAllUsers()
       .then(data => { if (!cancelled) setUsers(data); })
@@ -101,8 +103,6 @@ export const UserManagement = () => {
     handleRefresh();
   };
 
-  const isAdmin = currentUser?.role === 'Administrador';
-
   return (
     <div>
       <div className="user-mgmt-panel">
@@ -134,7 +134,11 @@ export const UserManagement = () => {
           </div>
         </div>
 
-        {loadingUsers ? (
+        {!isAdmin ? (
+          <p style={{ textAlign: 'center', color: '#f87171', fontSize: '14px', padding: '20px 0' }}>
+            No tienes permisos para ver la lista de usuarios.
+          </p>
+        ) : loadingUsers ? (
           <div className="user-mgmt-loading">
             <div className="spinner" style={{ width: '22px', height: '22px' }}></div>
             <span>Cargando usuarios...</span>
