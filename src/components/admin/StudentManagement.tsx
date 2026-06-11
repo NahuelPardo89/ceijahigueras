@@ -1,11 +1,14 @@
 import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudents, type StudentRecord } from '../../hooks/useStudents';
+import { useSubjects, type Subject } from '../../hooks/useSubjects';
+import { useGrades, type Grade } from '../../hooks/useGrades';
 import {
-  GraduationCap, RefreshCw, Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, FileText
+  GraduationCap, RefreshCw, Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, FileText, ClipboardList
 } from 'lucide-react';
 import { StudentFormModal } from './StudentFormModal';
 import { StudentDocumentationModal } from './StudentDocumentationModal';
+import { GradesFormModal } from './GradesFormModal';
 import { Pagination } from '../Pagination';
 
 type SortField = keyof StudentRecord | 'edad';
@@ -32,6 +35,8 @@ const gestionLabel: Record<string, string> = {
 export const StudentManagement = () => {
   const { user } = useAuth();
   const { getAllStudents, deleteStudent, error: hookError } = useStudents();
+  const { getSubjectsByPlan } = useSubjects();
+  const { getGradesByStudent, deleteGrade: deleteGradeFn } = useGrades();
   const isAdmin = user?.role === 'Administrador';
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
@@ -43,6 +48,11 @@ export const StudentManagement = () => {
   const [docStudent, setDocStudent] = useState<StudentRecord | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [gradesStudent, setGradesStudent] = useState<StudentRecord | null>(null);
+  const [gradeModalGrades, setGradeModalGrades] = useState<Grade[]>([]);
+  const [gradeModalSubjects, setGradeModalSubjects] = useState<Subject[]>([]);
+  const [showGradeForm, setShowGradeForm] = useState(false);
+  const [editGradeData, setEditGradeData] = useState<Grade | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -82,6 +92,58 @@ export const StudentManagement = () => {
     setEditStudent(s);
     setShowModal('edit');
   };
+
+  const handleOpenGrades = async (s: StudentRecord) => {
+    setGradesStudent(s);
+    setGradeModalGrades([]);
+    setGradeModalSubjects([]);
+    try {
+      if (s.planId) {
+        const subs = await getSubjectsByPlan(s.planId);
+        setGradeModalSubjects(subs);
+      }
+      const gs = await getGradesByStudent(s.id);
+      setGradeModalGrades(gs);
+    } catch {}
+  };
+
+  const handleGradeFormSuccess = async () => {
+    setShowGradeForm(false);
+    setEditGradeData(null);
+    if (gradesStudent) {
+      const gs = await getGradesByStudent(gradesStudent.id);
+      setGradeModalGrades(gs);
+    }
+  };
+
+  const handleDeleteGradeFromModal = async (grade: Grade) => {
+    if (!window.confirm('¿Estás seguro de eliminar esta calificación?')) return;
+    try {
+      await deleteGradeFn(grade.id);
+      setGradeModalGrades(prev => prev.filter(g => g.id !== grade.id));
+    } catch {}
+  };
+
+  const getSubjectNameInModal = (subjectId: string) => {
+    const found = gradeModalSubjects.find(s => s.id === subjectId);
+    return found?.nombre ?? '—';
+  };
+
+  const getModuloForSubjectInModal = (subjectId: string) => {
+    const found = gradeModalSubjects.find(s => s.id === subjectId);
+    return found?.modulo ?? 0;
+  };
+
+  const groupedGradeModalGrades = useMemo(() => {
+    const groups: Record<number, Grade[]> = {};
+    for (const g of gradeModalGrades) {
+      const mod = getModuloForSubjectInModal(g.subjectId);
+      if (!groups[mod]) groups[mod] = [];
+      groups[mod].push(g);
+    }
+    return groups;
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [gradeModalGrades, gradeModalSubjects]);
 
   const handleSuccess = () => {
     setShowModal(null);
@@ -256,6 +318,14 @@ export const StudentManagement = () => {
                 <span className="student-col-acciones">
                   <button
                     className="btn-icon-round btn-action-doc"
+                    onClick={() => handleOpenGrades(s)}
+                    title="Calificaciones"
+                    aria-label={`Calificaciones de ${s.apellido}, ${s.nombre}`}
+                  >
+                    <ClipboardList size={13} />
+                  </button>
+                  <button
+                    className="btn-icon-round btn-action-doc"
                     onClick={() => setDocStudent(s)}
                     title="Documentación"
                     aria-label={`Documentación de ${s.apellido}, ${s.nombre}`}
@@ -323,6 +393,141 @@ export const StudentManagement = () => {
           student={docStudent}
           onClose={() => setDocStudent(null)}
           onSuccess={() => { setDocStudent(null); handleRefresh(); }}
+        />
+      )}
+
+      {gradesStudent && (
+        <div className="modal-overlay" onClick={() => { setGradesStudent(null); setShowGradeForm(false); setEditGradeData(null); }}>
+          <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '700px' }}>
+            <div className="modal-header">
+              <h2>Calificaciones</h2>
+              <button
+                className="modal-close"
+                onClick={() => { setGradesStudent(null); setShowGradeForm(false); setEditGradeData(null); }}
+                aria-label="Cerrar"
+              >
+                <span style={{ fontSize: '18px' }}>✕</span>
+              </button>
+            </div>
+
+            <div style={{ padding: '0 24px 12px', fontSize: '14px', color: 'var(--color-text-secondary)' }}>
+              Estudiante: <strong>{gradesStudent.apellido}, {gradesStudent.nombre}</strong>
+              &nbsp;&middot;&nbsp;{gradesStudent.planActual}
+              &nbsp;&middot;&nbsp;{gradesStudent.cursado === 'virtual' ? 'Virtual' : 'Presencial'}
+              &nbsp;&middot;&nbsp;
+              <span className={`badge-estado badge-${gradesStudent.estado}`}>
+                {gradesStudent.estado === 'activo' ? 'Activo' : 'Inactivo'}
+              </span>
+            </div>
+
+            {!gradesStudent.planId ? (
+              <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '14px', padding: '20px 24px' }}>
+                El estudiante no tiene un plan de estudios asignado.
+              </p>
+            ) : gradeModalGrades.length === 0 ? (
+              <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '14px', padding: '20px 24px' }}>
+                Sin calificaciones cargadas.
+              </p>
+            ) : (
+              <div style={{ padding: '0 24px 12px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
+                {Object.entries(groupedGradeModalGrades).sort(([a], [b]) => Number(a) - Number(b)).map(([mod, modGrades]) => (
+                  <div key={mod} style={{
+                    background: 'var(--bg-card)',
+                    borderRadius: '8px',
+                    border: '1px solid var(--border-glass)',
+                    overflow: 'hidden',
+                  }}>
+                    <div style={{
+                      padding: '6px 12px',
+                      fontSize: '12px',
+                      fontWeight: 600,
+                      color: 'var(--color-text-secondary)',
+                      borderBottom: '1px solid var(--border-glass)',
+                      background: 'var(--bg-glass)',
+                    }}>
+                      Módulo {mod}
+                    </div>
+                    <div style={{ padding: '6px 12px' }}>
+                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                        <thead>
+                          <tr style={{ color: 'var(--color-text-muted)' }}>
+                            <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500 }}>Materia</th>
+                            <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 500 }}>Nota</th>
+                            <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 500 }}>Fecha</th>
+                            <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 500 }}>Acción</th>
+                          </tr>
+                        </thead>
+                        <tbody>
+                          {modGrades.map(g => (
+                            <tr key={g.id} style={{ borderTop: '1px solid var(--border-glass)' }}>
+                              <td style={{ padding: '6px 8px' }}>{getSubjectNameInModal(g.subjectId)}</td>
+                              <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 600 }}>
+                                {g.nota}
+                              </td>
+                              <td style={{ padding: '6px 8px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                                {g.fecha}
+                              </td>
+                              <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                                <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                                  <button
+                                    className="btn-icon-round btn-action-edit"
+                                    onClick={() => { setEditGradeData(g); setShowGradeForm(true); }}
+                                    title="Editar"
+                                    style={{ width: '24px', height: '24px' }}
+                                  >
+                                    <span style={{ fontSize: '11px' }}>✎</span>
+                                  </button>
+                                  <button
+                                    className="btn-icon-round btn-action-disable"
+                                    onClick={() => handleDeleteGradeFromModal(g)}
+                                    title="Eliminar"
+                                    style={{ width: '24px', height: '24px' }}
+                                  >
+                                    <span style={{ fontSize: '11px' }}>✕</span>
+                                  </button>
+                                </div>
+                              </td>
+                            </tr>
+                          ))}
+                        </tbody>
+                      </table>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            )}
+
+            {gradesStudent.planId && (
+              <div className="modal-actions">
+                <button
+                  type="button"
+                  className="btn-secondary"
+                  onClick={() => { setGradesStudent(null); setShowGradeForm(false); setEditGradeData(null); }}
+                >
+                  Cerrar
+                </button>
+                <button
+                  className="btn-submit"
+                  onClick={() => { setEditGradeData(null); setShowGradeForm(true); }}
+                  style={{ width: 'auto', padding: '10px 24px' }}
+                >
+                  <Plus size={14} style={{ marginRight: '6px' }} />
+                  Agregar calificación
+                </button>
+              </div>
+            )}
+          </div>
+        </div>
+      )}
+
+      {showGradeForm && gradesStudent && (
+        <GradesFormModal
+          student={gradesStudent}
+          planId={gradesStudent.planId || ''}
+          subjects={gradeModalSubjects}
+          initialData={editGradeData}
+          onClose={() => { setShowGradeForm(false); setEditGradeData(null); }}
+          onSuccess={handleGradeFormSuccess}
         />
       )}
     </div>

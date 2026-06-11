@@ -1,16 +1,15 @@
 import { useState, useMemo } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudents, type StudentRecord, type CertificadoPrimaria, type DocCompleta } from '../../hooks/useStudents';
-import { X, AlertCircle, CheckCircle, FileText } from 'lucide-react';
+import { X, FileText } from 'lucide-react';
 import { getFirebaseErrorMessage } from '../../utils/errors';
+import { useToast } from '../../context/ToastContext';
 
 interface Props {
   student: StudentRecord;
   onClose: () => void;
   onSuccess: () => void;
 }
-
-type SubmitStatus = { type: 'success'; msg: string } | { type: 'error'; msg: string } | null;
 
 const calcularEdad = (f: string): number => {
   const hoy = new Date();
@@ -22,6 +21,7 @@ const calcularEdad = (f: string): number => {
 };
 
 export const StudentDocumentationModal = ({ student, onClose, onSuccess }: Props) => {
+  const { toast } = useToast();
   const { user } = useAuth();
   const { updateStudent, loading } = useStudents();
   const isAdmin = user?.role === 'Administrador';
@@ -38,8 +38,6 @@ export const StudentDocumentationModal = ({ student, onClose, onSuccess }: Props
     observaciones: student.observaciones ?? '',
   });
 
-  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>(null);
-
   const handleToggle = (field: 'paseProvisorio' | 'paseDefinitivo' | 'fotocopiaDni' | 'cus') => {
     setDoc(prev => ({ ...prev, [field]: !prev[field] }));
   };
@@ -49,12 +47,12 @@ export const StudentDocumentationModal = ({ student, onClose, onSuccess }: Props
   };
 
   const handleSubmit = async () => {
-    setSubmitStatus(null);
     try {
       await updateStudent(student.id, doc);
-      setSubmitStatus({ type: 'success', msg: 'Documentación guardada exitosamente' });
+      toast('Documentación guardada exitosamente');
+      onSuccess();
     } catch (err) {
-      setSubmitStatus({ type: 'error', msg: getFirebaseErrorMessage(err, 'generic') });
+      toast(getFirebaseErrorMessage(err, 'generic'), 'error');
     }
   };
 
@@ -72,31 +70,12 @@ export const StudentDocumentationModal = ({ student, onClose, onSuccess }: Props
             <FileText size={20} />
             Documentación
           </h2>
-          <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={loading && !submitStatus}>
+          <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={loading}>
             <X size={20} />
           </button>
         </div>
 
-        {submitStatus ? (
-          <div style={{ textAlign: 'center', padding: '30px 0' }}>
-            {submitStatus.type === 'success' ? (
-              <CheckCircle size={64} style={{ color: 'var(--color-success)', marginBottom: '16px' }} />
-            ) : (
-              <AlertCircle size={64} style={{ color: 'var(--color-danger)', marginBottom: '16px' }} />
-            )}
-            <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '24px' }}>
-              {submitStatus.msg}
-            </p>
-            <button
-              className="btn-submit"
-              onClick={submitStatus.type === 'success' ? onSuccess : () => setSubmitStatus(null)}
-              style={{ width: 'auto', padding: '10px 28px' }}
-            >
-              {submitStatus.type === 'success' ? 'Volver al listado' : 'Intentar de nuevo'}
-            </button>
-          </div>
-        ) : (
-          <div className="doc-modal-content">
+        <div className="doc-modal-content">
             {/* Datos del estudiante (read-only) */}
             <div className="doc-section">
               <h3 className="doc-section-title">Datos del Estudiante</h3>
@@ -242,7 +221,6 @@ export const StudentDocumentationModal = ({ student, onClose, onSuccess }: Props
               </div>
             )}
           </div>
-        )}
       </div>
     </div>
   );

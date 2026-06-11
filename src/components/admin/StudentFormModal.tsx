@@ -1,8 +1,10 @@
-import { useState, type FormEvent } from 'react';
+import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudents, checkFieldUnique, DEFAULT_DOC, type StudentRecord, type CreateStudentData, type StudentStatus, type StudentModality, type StudentPlan, type StudentGestion } from '../../hooks/useStudents';
-import { X, AlertCircle, CheckCircle } from 'lucide-react';
+import { useStudyPlans, type StudyPlan } from '../../hooks/useStudyPlans';
+import { X, AlertCircle } from 'lucide-react';
 import { getFirebaseErrorMessage } from '../../utils/errors';
+import { useToast } from '../../context/ToastContext';
 
 interface StudentFormModalProps {
   mode: 'create' | 'edit';
@@ -27,26 +29,30 @@ const INITIAL_FORM: CreateStudentData = {
   ...DEFAULT_DOC,
 };
 
-type SubmitStatus = { type: 'success'; msg: string } | { type: 'error'; msg: string } | null;
-
 export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: StudentFormModalProps) => {
+  const { toast } = useToast();
   const { user } = useAuth();
   const { createStudent, updateStudent, loading } = useStudents();
+  const { getAllPlans } = useStudyPlans();
   const [form, setForm] = useState<CreateStudentData>(initialData ?? INITIAL_FORM);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>(null);
+  const [plans, setPlans] = useState<StudyPlan[]>([]);
 
   const isEdit = mode === 'edit';
   const isAdmin = user?.role === 'Administrador';
 
+  useEffect(() => {
+    getAllPlans().then(setPlans).catch(() => {});
+  }, []); // eslint-disable-line react-hooks/exhaustive-deps
+
+  const UPPER_FIELDS: Set<keyof CreateStudentData> = new Set(['apellido', 'nombre', 'dni', 'cuil']);
   const handleChange = (field: keyof CreateStudentData, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value.toUpperCase() }));
+    setForm(prev => ({ ...prev, [field]: UPPER_FIELDS.has(field) ? value.toUpperCase() : value }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLocalError(null);
-    setSubmitStatus(null);
 
     if (!form.apellido.trim()) {
       setLocalError('El apellido es obligatorio.');
@@ -91,55 +97,35 @@ export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: Stud
 
       if (isEdit && initialData) {
         await updateStudent(initialData.id, form);
-        setSubmitStatus({ type: 'success', msg: 'Estudiante actualizado exitosamente' });
+        toast('Estudiante actualizado exitosamente');
       } else {
         await createStudent(form);
-        setSubmitStatus({ type: 'success', msg: 'Estudiante creado exitosamente' });
+        toast('Estudiante creado exitosamente');
       }
+      onSuccess();
     } catch (err) {
-      setSubmitStatus({ type: 'error', msg: getFirebaseErrorMessage(err, 'generic') });
+      toast(getFirebaseErrorMessage(err, 'generic'), 'error');
     }
   };
-
-  const plans: StudentPlan[] = ['Plan A', 'Plan B', 'Plan C'];
 
   return (
     <div className="modal-overlay" onClick={onClose}>
       <div className="modal-card" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{isEdit ? 'Editar Estudiante' : 'Agregar Estudiante'}</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={loading && !submitStatus}>
+          <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={loading}>
             <X size={20} />
           </button>
         </div>
 
-        {localError && !submitStatus && (
+        {localError && (
           <div className="alert alert-danger" role="alert">
             <AlertCircle size={20} style={{ flexShrink: 0 }} />
             <span>{localError}</span>
           </div>
         )}
 
-        {submitStatus ? (
-          <div style={{ textAlign: 'center', padding: '30px 0' }}>
-            {submitStatus.type === 'success' ? (
-              <CheckCircle size={64} style={{ color: 'var(--color-success)', marginBottom: '16px' }} />
-            ) : (
-              <AlertCircle size={64} style={{ color: 'var(--color-danger)', marginBottom: '16px' }} />
-            )}
-            <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '24px' }}>
-              {submitStatus.msg}
-            </p>
-            <button
-              className="btn-submit"
-              onClick={submitStatus.type === 'success' ? onSuccess : () => setSubmitStatus(null)}
-              style={{ width: 'auto', padding: '10px 28px' }}
-            >
-              {submitStatus.type === 'success' ? 'Volver al listado' : 'Intentar de nuevo'}
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
             <div className="form-row">
               <div className="form-group">
                 <label className="form-label" htmlFor="modal-apellido">Apellido</label>
@@ -316,7 +302,7 @@ export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: Stud
                     disabled={loading || !isAdmin}
                     style={{ width: '100%', fontSize: '14px', padding: '14px 16px', borderRadius: 'var(--radius-input)' }}
                   >
-                    {plans.map(p => (
+                    {['Plan A', 'Plan B', 'Plan C'].map(p => (
                       <option key={p} value={p}>{p}</option>
                     ))}
                   </select>
@@ -342,6 +328,25 @@ export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: Stud
               </div>
             </div>
 
+            <div className="form-group">
+              <label className="form-label" htmlFor="modal-plan-id">Plan de Estudios</label>
+              <div className="input-container">
+                <select
+                  id="modal-plan-id"
+                  className="role-select"
+                  value={form.planId ?? ''}
+                  onChange={e => handleChange('planId', e.target.value)}
+                  disabled={loading || !isAdmin}
+                  style={{ width: '100%', fontSize: '14px', padding: '14px 16px', borderRadius: 'var(--radius-input)' }}
+                >
+                  <option value="">Seleccionar plan</option>
+                  {plans.filter(p => p.active).map(p => (
+                    <option key={p.id} value={p.id}>{p.nombre}</option>
+                  ))}
+                </select>
+              </div>
+            </div>
+
             {isAdmin && (
               <div className="modal-actions">
                 <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>
@@ -357,7 +362,6 @@ export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: Stud
               </div>
             )}
           </form>
-        )}
       </div>
     </div>
   );

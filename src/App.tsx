@@ -5,6 +5,7 @@ import { Login } from './components/Login';
 import { ForgotPassword } from './components/ForgotPassword';
 import { Dashboard } from './components/Dashboard';
 import { ErrorBoundary } from './components/ErrorBoundary';
+import { ToastProvider } from './context/ToastContext';
 
 const AppContent = () => {
   const { user, loading } = useAuth();
@@ -39,7 +40,9 @@ function App() {
   return (
     <ErrorBoundary>
       <AuthProvider>
-        <AppContent />
+        <ToastProvider>
+          <AppContent />
+        </ToastProvider>
       </AuthProvider>
     </ErrorBoundary>
   );

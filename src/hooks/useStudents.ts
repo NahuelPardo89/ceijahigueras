@@ -36,6 +36,7 @@ export type StudentRecord = {
   planActual: StudentPlan;
   cursado: StudentModality;
   gestion: StudentGestion;
+  planId?: string;
   createdAt: string;
   createdBy: string;
 } & StudentDocumentation;
@@ -53,6 +54,7 @@ export type CreateStudentData = {
   planActual: StudentPlan;
   cursado: StudentModality;
   gestion: StudentGestion;
+  planId?: string;
 } & StudentDocumentation;
 
 export const DEFAULT_DOC: StudentDocumentation = {

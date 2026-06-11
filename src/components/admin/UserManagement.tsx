@@ -7,14 +7,15 @@ import {
 } from 'lucide-react';
 import { UserFormModal } from './UserFormModal';
 import { Pagination } from '../Pagination';
+import { useToast } from '../../context/ToastContext';
 
 export const UserManagement = () => {
+  const { toast } = useToast();
   const { getAllUsers, updateUserRole, disableUser, user: currentUser } = useAuth();
   const isAdmin = currentUser?.role === 'Administrador';
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(isAdmin);
   const [updating, setUpdating] = useState<string | null>(null);
-  const [feedback, setFeedback] = useState<{ uid: string; msg: string } | null>(null);
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState<'create' | 'edit' | null>(null);
   const [editUser, setEditUser] = useState<UserRecord | null>(null);
@@ -57,15 +58,12 @@ export const UserManagement = () => {
     }
 
     setUpdating(uid);
-    setFeedback(null);
     try {
       await updateUserRole(uid, newRole);
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, role: newRole } : u));
-      setFeedback({ uid, msg: `Rol actualizado a ${newRole}` });
-      setTimeout(() => setFeedback(null), 3000);
+      toast(`Rol actualizado a ${newRole}`);
     } catch {
-      setFeedback({ uid, msg: 'Error al actualizar el rol.' });
-      setTimeout(() => setFeedback(null), 3000);
+      toast('Error al actualizar el rol.', 'error');
     } finally {
       setUpdating(null);
     }
@@ -80,16 +78,12 @@ export const UserManagement = () => {
     }
 
     setUpdating(uid);
-    setFeedback(null);
     try {
       await disableUser(uid, !currentDisabled);
       setUsers(prev => prev.map(u => u.uid === uid ? { ...u, disabled: !currentDisabled } : u));
-      const msg = currentDisabled ? 'Usuario restaurado exitosamente.' : 'Usuario deshabilitado.';
-      setFeedback({ uid, msg });
-      setTimeout(() => setFeedback(null), 3000);
+      toast(currentDisabled ? 'Usuario restaurado exitosamente.' : 'Usuario deshabilitado.');
     } catch {
-      setFeedback({ uid, msg: 'Error al actualizar el estado del usuario.' });
-      setTimeout(() => setFeedback(null), 3000);
+      toast('Error al actualizar el estado del usuario.', 'error');
     } finally {
       setUpdating(null);
     }
@@ -192,28 +186,22 @@ export const UserManagement = () => {
                   </div>
 
                   <div className="role-select-wrapper">
-                    {feedback?.uid === u.uid ? (
-                      <span className={`role-feedback ${feedback.msg.includes('Error') ? 'role-feedback-error' : 'role-feedback-ok'}`}>
-                        {feedback.msg}
-                      </span>
-                    ) : (
-                      <div className="role-select-container">
-                        <select
-                          className="role-select"
-                          value={u.role}
-                          disabled={updating === u.uid || isSelf || !isAdmin}
-                          onChange={e => handleRoleChange(u.uid, e.target.value as UserRole)}
-                          aria-label={`Rol de ${u.displayName || u.email}`}
-                        >
-                          <option value="Administrador">Administrador</option>
-                          <option value="Profesor">Profesor</option>
-                        </select>
-                        <ChevronDown size={13} className="role-select-arrow" />
-                        {updating === u.uid && (
-                          <div className="spinner spinner-sm"></div>
-                        )}
-                      </div>
-                    )}
+                    <div className="role-select-container">
+                      <select
+                        className="role-select"
+                        value={u.role}
+                        disabled={updating === u.uid || isSelf || !isAdmin}
+                        onChange={e => handleRoleChange(u.uid, e.target.value as UserRole)}
+                        aria-label={`Rol de ${u.displayName || u.email}`}
+                      >
+                        <option value="Administrador">Administrador</option>
+                        <option value="Profesor">Profesor</option>
+                      </select>
+                      <ChevronDown size={13} className="role-select-arrow" />
+                      {updating === u.uid && (
+                        <div className="spinner spinner-sm"></div>
+                      )}
+                    </div>
 
                     <div className="role-badge-mini">
                       {u.role === 'Administrador'

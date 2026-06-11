@@ -1,9 +1,10 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import type { UserRole } from '../../context/AuthContext';
-import { X, Eye, EyeOff, AlertCircle, CheckCircle } from 'lucide-react';
+import { X, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { EMAIL_REGEX } from '../../utils/constants';
 import { getFirebaseErrorMessage } from '../../utils/errors';
+import { useToast } from '../../context/ToastContext';
 
 interface UserFormData {
   uid?: string;
@@ -27,13 +28,11 @@ const INITIAL_FORM: UserFormData = {
   role: 'Profesor',
 };
 
-type SubmitStatus = { type: 'success'; msg: string } | { type: 'error'; msg: string } | null;
-
 export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFormModalProps) => {
+  const { toast } = useToast();
   const { createUser, updateUser, loading, clearError } = useAuth();
   const [form, setForm] = useState<UserFormData>(initialData ?? INITIAL_FORM);
   const [localError, setLocalError] = useState<string | null>(null);
-  const [submitStatus, setSubmitStatus] = useState<SubmitStatus>(null);
   const [showPassword, setShowPassword] = useState(false);
 
   const isEdit = mode === 'edit';
@@ -43,14 +42,13 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
   }, [clearError]);
 
   const handleChange = (field: keyof UserFormData, value: string) => {
-    const upperFields: (keyof UserFormData)[] = ['displayName', 'email'];
+    const upperFields: (keyof UserFormData)[] = ['displayName'];
     setForm(prev => ({ ...prev, [field]: upperFields.includes(field) ? value.toUpperCase() : value }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
     setLocalError(null);
-    setSubmitStatus(null);
 
     if (!form.displayName.trim()) {
       setLocalError('El nombre es obligatorio.');
@@ -78,9 +76,10 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
       } else {
         await createUser(form.email, form.password, form.displayName, form.role);
       }
-      setSubmitStatus({ type: 'success', msg: isEdit ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente' });
+      toast(isEdit ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente');
+      onSuccess();
     } catch (err) {
-      setSubmitStatus({ type: 'error', msg: getFirebaseErrorMessage(err, isEdit ? 'generic' : 'signUp') });
+      toast(getFirebaseErrorMessage(err, isEdit ? 'generic' : 'signUp'), 'error');
     }
   };
 
@@ -89,38 +88,19 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
       <div className="modal-card" onClick={e => e.stopPropagation()}>
         <div className="modal-header">
           <h2>{isEdit ? 'Editar Usuario' : 'Agregar Usuario'}</h2>
-          <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={loading && !submitStatus}>
+          <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={loading}>
             <X size={20} />
           </button>
         </div>
 
-        {localError && !submitStatus && (
+        {localError && (
           <div className="alert alert-danger" role="alert">
             <AlertCircle size={20} style={{ flexShrink: 0 }} />
             <span>{localError}</span>
           </div>
         )}
 
-        {submitStatus ? (
-          <div style={{ textAlign: 'center', padding: '30px 0' }}>
-            {submitStatus.type === 'success' ? (
-              <CheckCircle size={64} style={{ color: 'var(--color-success)', marginBottom: '16px' }} />
-            ) : (
-              <AlertCircle size={64} style={{ color: 'var(--color-danger)', marginBottom: '16px' }} />
-            )}
-            <p style={{ fontSize: '16px', fontWeight: 600, color: 'var(--color-text-primary)', marginBottom: '24px' }}>
-              {submitStatus.msg}
-            </p>
-            <button
-              className="btn-submit"
-              onClick={submitStatus.type === 'success' ? onSuccess : () => setSubmitStatus(null)}
-              style={{ width: 'auto', padding: '10px 28px' }}
-            >
-              {submitStatus.type === 'success' ? 'Volver al listado' : 'Intentar de nuevo'}
-            </button>
-          </div>
-        ) : (
-          <form onSubmit={handleSubmit}>
+        <form onSubmit={handleSubmit}>
             <div className="form-group">
               <label className="form-label" htmlFor="modal-name">Nombre Completo</label>
               <div className="input-container">
@@ -212,7 +192,6 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
               </button>
             </div>
           </form>
-        )}
       </div>
     </div>
   );
