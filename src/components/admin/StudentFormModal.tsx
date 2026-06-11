@@ -1,6 +1,6 @@
 import { useState, type FormEvent } from 'react';
 import { useAuth } from '../../hooks/useAuth';
-import { useStudents, type StudentRecord, type CreateStudentData, type StudentStatus, type StudentModality, type StudentPlan, type StudentGestion } from '../../hooks/useStudents';
+import { useStudents, checkFieldUnique, DEFAULT_DOC, type StudentRecord, type CreateStudentData, type StudentStatus, type StudentModality, type StudentPlan, type StudentGestion } from '../../hooks/useStudents';
 import { X, AlertCircle, CheckCircle } from 'lucide-react';
 import { getFirebaseErrorMessage } from '../../utils/errors';
 
@@ -16,12 +16,15 @@ const INITIAL_FORM: CreateStudentData = {
   nombre: '',
   dni: '',
   cuil: '',
+  email: '',
+  telefono: '',
   fechaNacimiento: '',
   estado: 'activo',
   planInicial: '',
   planActual: 'Plan A',
   cursado: 'presencial',
   gestion: 'sin cargar',
+  ...DEFAULT_DOC,
 };
 
 type SubmitStatus = { type: 'success'; msg: string } | { type: 'error'; msg: string } | null;
@@ -37,7 +40,7 @@ export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: Stud
   const isAdmin = user?.role === 'Administrador';
 
   const handleChange = (field: keyof CreateStudentData, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    setForm(prev => ({ ...prev, [field]: value.toUpperCase() }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -71,6 +74,21 @@ export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: Stud
     }
 
     try {
+      const excludeId = isEdit && initialData ? initialData.id : undefined;
+
+      if (!(await checkFieldUnique('dni', form.dni, excludeId))) {
+        setLocalError('Ya existe un estudiante con ese DNI.');
+        return;
+      }
+      if (!(await checkFieldUnique('cuil', form.cuil, excludeId))) {
+        setLocalError('Ya existe un estudiante con ese CUIL.');
+        return;
+      }
+      if (!(await checkFieldUnique('email', form.email, excludeId))) {
+        setLocalError('Ya existe un estudiante con ese email.');
+        return;
+      }
+
       if (isEdit && initialData) {
         await updateStudent(initialData.id, form);
         setSubmitStatus({ type: 'success', msg: 'Estudiante actualizado exitosamente' });
@@ -188,6 +206,38 @@ export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: Stud
               </div>
             </div>
 
+            <div className="form-row">
+              <div className="form-group">
+                <label className="form-label" htmlFor="modal-telefono">Teléfono</label>
+                <div className="input-container">
+                  <input
+                    id="modal-telefono"
+                    type="text"
+                    className="input-field"
+                    placeholder="Ej: 3411234567"
+                    value={form.telefono}
+                    onChange={e => handleChange('telefono', e.target.value)}
+                    disabled={loading || !isAdmin}
+                    style={{ paddingLeft: '16px' }}
+                  />
+                </div>
+              </div>
+              <div className="form-group">
+                <label className="form-label" htmlFor="modal-email">Email</label>
+                <div className="input-container">
+                  <input
+                    id="modal-email"
+                    type="email"
+                    className="input-field"
+                    placeholder="correo@ejemplo.com"
+                    value={form.email}
+                    onChange={e => handleChange('email', e.target.value)}
+                    disabled={loading || !isAdmin}
+                    style={{ paddingLeft: '16px' }}
+                  />
+                </div>
+              </div>
+            </div>
             <div className="form-group">
               <label className="form-label" htmlFor="modal-fecha">Fecha de Nacimiento</label>
               <div className="input-container">

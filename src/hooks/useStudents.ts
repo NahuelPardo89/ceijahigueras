@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, limit } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, limit, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './useAuth';
 
@@ -7,13 +7,29 @@ export type StudentStatus = 'activo' | 'inactivo';
 export type StudentModality = 'virtual' | 'presencial';
 export type StudentPlan = 'Plan A' | 'Plan B' | 'Plan C';
 export type StudentGestion = 'sin cargar' | 'cargado' | 'pase solicitado' | 'invalido';
+export type CertificadoPrimaria = 'no corresponde' | 'original' | 'constancia correcta' | 'constancia incorrecta';
+export type DocCompleta = 'completa' | 'incompleta';
 
-export interface StudentRecord {
+export interface StudentDocumentation {
+  paseProvisorio: boolean;
+  paseDefinitivo: boolean;
+  fotocopiaDni: boolean;
+  cus: boolean;
+  certificadoPrimaria: CertificadoPrimaria;
+  numeroEquivalencia: string;
+  linkTitulo: string;
+  documentacionCompleta: DocCompleta;
+  observaciones: string;
+}
+
+export type StudentRecord = {
   id: string;
   apellido: string;
   nombre: string;
   dni: string;
   cuil: string;
+  email: string;
+  telefono: string;
   fechaNacimiento: string;
   estado: StudentStatus;
   planInicial: string;
@@ -22,20 +38,41 @@ export interface StudentRecord {
   gestion: StudentGestion;
   createdAt: string;
   createdBy: string;
-}
+} & StudentDocumentation;
 
-export interface CreateStudentData {
+export type CreateStudentData = {
   apellido: string;
   nombre: string;
   dni: string;
   cuil: string;
+  email: string;
+  telefono: string;
   fechaNacimiento: string;
   estado: StudentStatus;
   planInicial: string;
   planActual: StudentPlan;
   cursado: StudentModality;
   gestion: StudentGestion;
-}
+} & StudentDocumentation;
+
+export const DEFAULT_DOC: StudentDocumentation = {
+  paseProvisorio: false,
+  paseDefinitivo: false,
+  fotocopiaDni: false,
+  cus: false,
+  certificadoPrimaria: 'no corresponde',
+  numeroEquivalencia: '',
+  linkTitulo: '',
+  documentacionCompleta: 'incompleta',
+  observaciones: '',
+};
+
+export const checkFieldUnique = async (field: 'dni' | 'cuil' | 'email', value: string, excludeId?: string): Promise<boolean> => {
+  const q = query(collection(db, 'students'), where(field, '==', value));
+  const snap = await getDocs(q);
+  const match = snap.docs.find(d => d.id !== excludeId);
+  return !match;
+};
 
 export const useStudents = () => {
   const { user } = useAuth();
@@ -67,6 +104,7 @@ export const useStudents = () => {
     setError(null);
     try {
       const docRef = await addDoc(collection(db, 'students'), {
+        ...DEFAULT_DOC,
         ...data,
         createdAt: new Date().toISOString(),
         createdBy: user.uid,

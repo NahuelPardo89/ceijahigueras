@@ -1,10 +1,12 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudents, type StudentRecord } from '../../hooks/useStudents';
 import {
-  GraduationCap, RefreshCw, Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown
+  GraduationCap, RefreshCw, Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, FileText
 } from 'lucide-react';
 import { StudentFormModal } from './StudentFormModal';
+import { StudentDocumentationModal } from './StudentDocumentationModal';
+import { Pagination } from '../Pagination';
 
 type SortField = keyof StudentRecord | 'edad';
 type SortDir = 'asc' | 'desc';
@@ -38,6 +40,9 @@ export const StudentManagement = () => {
   const [sortDir, setSortDir] = useState<SortDir>('asc');
   const [showModal, setShowModal] = useState<'create' | 'edit' | null>(null);
   const [editStudent, setEditStudent] = useState<StudentRecord | null>(null);
+  const [docStudent, setDocStudent] = useState<StudentRecord | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   useEffect(() => {
     let cancelled = false;
@@ -48,6 +53,10 @@ export const StudentManagement = () => {
     return () => { cancelled = true; };
   // eslint-disable-next-line react-hooks/exhaustive-deps
   }, []);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, sortField, sortDir, pageSize]);
 
   const handleRefresh = () => {
     setLoadingData(true);
@@ -111,6 +120,14 @@ export const StudentManagement = () => {
       return sortDir === 'asc' ? cmp : -cmp;
     });
   }, [students, search, sortField, sortDir]);
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  const handlePageChange = useCallback((page: number) => setCurrentPage(page), []);
+  const handlePageSizeChange = useCallback((size: number) => setPageSize(size), []);
 
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) return null;
@@ -203,9 +220,12 @@ export const StudentManagement = () => {
               <span className="student-col-sortable" onClick={handleHeaderClick('gestion')}>
                 Gestión{renderSortIcon('gestion')}
               </span>
+              <span className="student-col-sortable" onClick={handleHeaderClick('documentacionCompleta')}>
+                Doc.{renderSortIcon('documentacionCompleta')}
+              </span>
               <span>Acciones</span>
             </div>
-            {filtered.map(s => (
+            {paginated.map(s => (
               <div key={s.id} className="student-row">
                 <span className="student-name-text">
                   {s.apellido}, {s.nombre}
@@ -228,7 +248,20 @@ export const StudentManagement = () => {
                     {gestionLabel[s.gestion] ?? s.gestion}
                   </span>
                 </span>
+                <span>
+                  <span className={`badge-doc ${s.documentacionCompleta === 'completa' ? 'badge-doc-completa' : 'badge-doc-incompleta'}`}>
+                    {s.documentacionCompleta === 'completa' ? 'Completa' : 'Incompleta'}
+                  </span>
+                </span>
                 <span className="student-col-acciones">
+                  <button
+                    className="btn-icon-round btn-action-doc"
+                    onClick={() => setDocStudent(s)}
+                    title="Documentación"
+                    aria-label={`Documentación de ${s.apellido}, ${s.nombre}`}
+                  >
+                    <FileText size={13} />
+                  </button>
                   {isAdmin ? (
                     <>
                       <button
@@ -256,6 +289,16 @@ export const StudentManagement = () => {
             ))}
           </div>
         )}
+
+        {!loadingData && filtered.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
+        )}
       </div>
 
       {showModal === 'create' && (
@@ -272,6 +315,14 @@ export const StudentManagement = () => {
           initialData={editStudent}
           onClose={() => { setShowModal(null); setEditStudent(null); }}
           onSuccess={handleSuccess}
+        />
+      )}
+
+      {docStudent && (
+        <StudentDocumentationModal
+          student={docStudent}
+          onClose={() => setDocStudent(null)}
+          onSuccess={() => { setDocStudent(null); handleRefresh(); }}
         />
       )}
     </div>

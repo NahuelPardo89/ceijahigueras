@@ -1,4 +1,4 @@
-import { useEffect, useState } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import type { UserRole, UserRecord } from '../../context/AuthContext';
 import {
@@ -6,6 +6,7 @@ import {
   Plus, Pencil, UserX, UserCheck
 } from 'lucide-react';
 import { UserFormModal } from './UserFormModal';
+import { Pagination } from '../Pagination';
 
 export const UserManagement = () => {
   const { getAllUsers, updateUserRole, disableUser, user: currentUser } = useAuth();
@@ -17,6 +18,8 @@ export const UserManagement = () => {
   const [fetchError, setFetchError] = useState<string | null>(null);
   const [showModal, setShowModal] = useState<'create' | 'edit' | null>(null);
   const [editUser, setEditUser] = useState<UserRecord | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   useEffect(() => {
     if (!isAdmin) return;
@@ -92,6 +95,18 @@ export const UserManagement = () => {
     }
   };
 
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [pageSize]);
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return users.slice(start, start + pageSize);
+  }, [users, currentPage, pageSize]);
+
+  const handlePageChange = useCallback((page: number) => setCurrentPage(page), []);
+  const handlePageSizeChange = useCallback((size: number) => setPageSize(size), []);
+
   const openEditModal = (u: UserRecord) => {
     setEditUser(u);
     setShowModal('edit');
@@ -153,7 +168,7 @@ export const UserManagement = () => {
           </p>
         ) : (
           <div className="user-list">
-            {users.map(u => {
+            {paginated.map(u => {
               const isSelf = u.uid === currentUser?.uid;
               const isDisabled = u.disabled === true;
               const initials = u.displayName
@@ -232,6 +247,16 @@ export const UserManagement = () => {
               );
             })}
           </div>
+        )}
+
+        {!loadingUsers && users.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={users.length}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         )}
       </div>
 
