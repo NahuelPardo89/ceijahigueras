@@ -31,6 +31,7 @@ export const GradesManagement = () => {
   const [showModal, setShowModal] = useState(false);
   const [editGrade, setEditGrade] = useState<Grade | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
+  const [loadingGrades, setLoadingGrades] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -72,7 +73,9 @@ export const GradesManagement = () => {
     }
     setExpandedStudent(student.id);
     setSelectedStudent(student);
+    setLoadingGrades(true);
     await loadGradesForStudent(student.id);
+    setLoadingGrades(false);
   };
 
   const handleRefresh = () => {
@@ -123,7 +126,7 @@ export const GradesManagement = () => {
     if (filter === 'virtuales') {
       list = list.filter(s => s.cursado === 'virtual');
     } else {
-      list = list.filter(s => s.planActual === filter);
+      list = list.filter(s => s.planActual === filter && s.cursado !== 'virtual');
     }
     if (!q) return list;
     return list.filter(s =>
@@ -210,7 +213,7 @@ export const GradesManagement = () => {
               <span className="filter-count">
                 {f.key === 'virtuales'
                   ? activeStudents.filter(s => s.cursado === 'virtual').length
-                  : activeStudents.filter(s => s.planActual === f.key).length
+                  : activeStudents.filter(s => s.planActual === f.key && s.cursado !== 'virtual').length
                 }
               </span>
             </button>
@@ -251,7 +254,12 @@ export const GradesManagement = () => {
 
                 {expandedStudent === s.id && (
                   <div style={{ padding: '8px 16px 16px', background: 'var(--bg-glass)' }}>
-                    {Object.keys(groupedGrades).length === 0 ? (
+                    {loadingGrades ? (
+                      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'center', gap: '8px', padding: '12px 0' }}>
+                        <div className="spinner" style={{ width: '16px', height: '16px' }}></div>
+                        <span style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>Cargando calificaciones...</span>
+                      </div>
+                    ) : Object.keys(groupedGrades).length === 0 ? (
                       <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', textAlign: 'center', padding: '12px 0' }}>
                         Sin calificaciones cargadas.
                       </p>
