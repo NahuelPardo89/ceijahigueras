@@ -1,4 +1,4 @@
-import { useState, useMemo, type FormEvent } from 'react';
+import { useState, useMemo, useEffect, type FormEvent } from 'react';
 import { useGrades, isValidFecha, parseDateToDMY, type Grade, type CreateGradeData } from '../../hooks/useGrades';
 import type { Subject } from '../../hooks/useSubjects';
 import type { StudentRecord } from '../../hooks/useStudents';
@@ -34,14 +34,51 @@ export const GradesFormModal = ({ student, planId, subjects, initialData, onClos
 
   const [form, setForm] = useState<CreateGradeData>(initialData ?? INITIAL_FORM(student.id, planId));
   const [localError, setLocalError] = useState<string | null>(null);
+  const [selectedModule, setSelectedModule] = useState<number | null>(() => {
+    if (initialData) {
+      const s = subjects.find(sub => sub.id === initialData.subjectId);
+      return s?.modulo ?? null;
+    }
+    return null;
+  });
 
   const handleChange = (field: keyof CreateGradeData, value: string) => {
     setForm(prev => ({ ...prev, [field]: value }));
   };
 
-  const sortedSubjects = useMemo(() => {
-    return [...subjects].sort((a, b) => a.modulo - b.modulo || a.order - b.order);
+  const uniqueModules = useMemo(() => {
+    return [...new Set(subjects.map(s => s.modulo))].sort((a, b) => a - b);
   }, [subjects]);
+
+  const filteredSubjects = useMemo(() => {
+    if (selectedModule === null) return [];
+    return subjects.filter(s => s.modulo === selectedModule).sort((a, b) => a.order - b.order);
+  }, [subjects, selectedModule]);
+
+  const showSubjectSelect = filteredSubjects.length > 1;
+  const autoSelectedSubject = filteredSubjects.length === 1 ? filteredSubjects[0] : null;
+
+  useEffect(() => {
+    if (autoSelectedSubject) {
+      handleChange('subjectId', autoSelectedSubject.id);
+    } else if (!showSubjectSelect) {
+      handleChange('subjectId', '');
+    }
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedModule, autoSelectedSubject?.id]);
+
+  const handleModuleChange = (value: string) => {
+    const mod = value ? Number(value) : null;
+    setSelectedModule(mod);
+    if (mod === null) {
+      handleChange('subjectId', '');
+    } else {
+      const subs = subjects.filter(s => s.modulo === mod);
+      if (subs.length !== 1) {
+        handleChange('subjectId', '');
+      }
+    }
+  };
 
   const handleSubmit = async (e: FormEvent) => {
     e.preventDefault();
@@ -97,23 +134,66 @@ export const GradesFormModal = ({ student, planId, subjects, initialData, onClos
 
         <form onSubmit={handleSubmit}>
             <div className="form-group" style={{ padding: '0 24px' }}>
-              <label className="form-label" htmlFor="modal-grade-subject">Materia</label>
+              <label className="form-label" htmlFor="modal-grade-module">Módulo</label>
               <div className="input-container">
                 <select
-                  id="modal-grade-subject"
+                  id="modal-grade-module"
                   className="role-select"
-                  value={form.subjectId}
-                  onChange={e => handleChange('subjectId', e.target.value)}
+                  value={selectedModule ?? ''}
+                  onChange={e => handleModuleChange(e.target.value)}
                   disabled={loading || isEdit}
                   style={{ width: '100%', fontSize: '14px', padding: '14px 16px', borderRadius: 'var(--radius-input)' }}
                 >
-                  <option value="">Seleccionar materia</option>
-                  {sortedSubjects.map(s => (
-                    <option key={s.id} value={s.id}>Módulo {s.modulo} - {s.nombre}</option>
+                  <option value="">Seleccionar módulo</option>
+                  {uniqueModules.map(m => (
+                    <option key={m} value={m}>Módulo {m}</option>
                   ))}
                 </select>
               </div>
             </div>
+
+            {showSubjectSelect && (
+              <div className="form-group" style={{ padding: '0 24px' }}>
+                <label className="form-label" htmlFor="modal-grade-subject">Materia</label>
+                <div className="input-container">
+                  <select
+                    id="modal-grade-subject"
+                    className="role-select"
+                    value={form.subjectId}
+                    onChange={e => handleChange('subjectId', e.target.value)}
+                    disabled={loading || isEdit}
+                    style={{ width: '100%', fontSize: '14px', padding: '14px 16px', borderRadius: 'var(--radius-input)' }}
+                  >
+                    <option value="">Seleccionar materia</option>
+                    {filteredSubjects.map(s => (
+                      <option key={s.id} value={s.id}>{s.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              </div>
+            )}
+
+            {autoSelectedSubject && (
+              <div style={{ padding: '0 24px', marginBottom: '16px' }}>
+                <div style={{
+                  fontSize: '12px',
+                  color: 'var(--color-text-secondary)',
+                  marginBottom: '2px',
+                }}>
+                  Materia
+                </div>
+                <div style={{
+                  fontSize: '14px',
+                  fontWeight: 500,
+                  padding: '8px 12px',
+                  background: 'var(--bg-card)',
+                  borderRadius: 'var(--radius-input)',
+                  border: '1px solid var(--border-glass)',
+                }}>
+                  Módulo {autoSelectedSubject.modulo} - {autoSelectedSubject.nombre}
+                </div>
+              </div>
+            )}
 
             <div className="form-group" style={{ padding: '0 24px' }}>
               <label className="form-label" htmlFor="modal-grade-nota">Nota</label>

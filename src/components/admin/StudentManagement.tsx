@@ -524,7 +524,10 @@ export const StudentManagement = () => {
         <GradesFormModal
           student={gradesStudent}
           planId={gradesStudent.planId || ''}
-          subjects={gradeModalSubjects}
+          subjects={user?.role === 'Profesor' && user.subjectIds
+            ? gradeModalSubjects.filter(s => user.subjectIds!.includes(s.id))
+            : gradeModalSubjects
+          }
           initialData={editGradeData}
           onClose={() => { setShowGradeForm(false); setEditGradeData(null); }}
           onSuccess={handleGradeFormSuccess}

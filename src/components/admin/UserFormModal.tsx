@@ -1,5 +1,7 @@
 import { useState, useEffect, type FormEvent } from 'react';
 import { useAuth } from '../../hooks/useAuth';
+import { useStudyPlans } from '../../hooks/useStudyPlans';
+import { useSubjects, type Subject } from '../../hooks/useSubjects';
 import type { UserRole } from '../../context/AuthContext';
 import { X, Eye, EyeOff, AlertCircle } from 'lucide-react';
 import { EMAIL_REGEX } from '../../utils/constants';
@@ -12,11 +14,12 @@ interface UserFormData {
   password: string;
   displayName: string;
   role: UserRole;
+  subjectIds?: string[];
 }
 
 interface UserFormModalProps {
   mode: 'create' | 'edit';
-  initialData?: UserFormData;
+  initialData?: UserFormData & { subjectIds?: string[] };
   onClose: () => void;
   onSuccess: () => void;
 }
@@ -26,24 +29,70 @@ const INITIAL_FORM: UserFormData = {
   password: '',
   displayName: '',
   role: 'Profesor',
+  subjectIds: [],
 };
 
 export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFormModalProps) => {
   const { toast } = useToast();
   const { createUser, updateUser, loading, clearError } = useAuth();
-  const [form, setForm] = useState<UserFormData>(initialData ?? INITIAL_FORM);
+  const { getAllPlans } = useStudyPlans();
+  const { getSubjectsByPlan } = useSubjects();
+  const [form, setForm] = useState<UserFormData>({
+    ...INITIAL_FORM,
+    ...initialData,
+    subjectIds: initialData?.subjectIds ?? [],
+  });
   const [localError, setLocalError] = useState<string | null>(null);
   const [showPassword, setShowPassword] = useState(false);
+  const [allSubjects, setAllSubjects] = useState<Subject[]>([]);
+  const [loadingSubjects, setLoadingSubjects] = useState(false);
 
   const isEdit = mode === 'edit';
+  const isProfesor = form.role === 'Profesor';
 
   useEffect(() => {
     clearError();
   }, [clearError]);
 
+  useEffect(() => {
+    let cancelled = false;
+    const loadSubjects = async () => {
+      setLoadingSubjects(true);
+      try {
+        const plans = await getAllPlans();
+        const results = await Promise.allSettled(plans.map(p => getSubjectsByPlan(p.id)));
+        const subs: Subject[] = [];
+        for (const r of results) {
+          if (r.status === 'fulfilled') subs.push(...r.value);
+        }
+        if (!cancelled) setAllSubjects(subs);
+      } catch {
+      } finally {
+        if (!cancelled) setLoadingSubjects(false);
+      }
+    };
+    loadSubjects();
+    return () => { cancelled = true; };
+  // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  const toggleSubject = (subjectId: string) => {
+    setForm(prev => {
+      const current = prev.subjectIds ?? [];
+      const next = current.includes(subjectId)
+        ? current.filter(id => id !== subjectId)
+        : [...current, subjectId];
+      return { ...prev, subjectIds: next };
+    });
+  };
+
   const handleChange = (field: keyof UserFormData, value: string) => {
     const upperFields: (keyof UserFormData)[] = ['displayName'];
-    setForm(prev => ({ ...prev, [field]: upperFields.includes(field) ? value.toUpperCase() : value }));
+    const updated = { ...form, [field]: upperFields.includes(field) ? value.toUpperCase() : value };
+    if (field === 'role' && value === 'Administrador') {
+      updated.subjectIds = [];
+    }
+    setForm(updated);
   };
 
   const handleSubmit = async (e: FormEvent) => {
@@ -72,9 +121,10 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
         await updateUser(initialData.uid, {
           displayName: form.displayName,
           role: form.role,
+          subjectIds: isProfesor ? form.subjectIds : undefined,
         });
       } else {
-        await createUser(form.email, form.password, form.displayName, form.role);
+        await createUser(form.email, form.password, form.displayName, form.role, isProfesor ? form.subjectIds : undefined);
       }
       toast(isEdit ? 'Usuario actualizado exitosamente' : 'Usuario creado exitosamente');
       onSuccess();
@@ -85,7 +135,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
 
   return (
     <div className="modal-overlay" onClick={onClose}>
-      <div className="modal-card" onClick={e => e.stopPropagation()}>
+      <div className="modal-card" onClick={e => e.stopPropagation()} style={{ maxWidth: '600px' }}>
         <div className="modal-header">
           <h2>{isEdit ? 'Editar Usuario' : 'Agregar Usuario'}</h2>
           <button className="modal-close" onClick={onClose} aria-label="Cerrar" disabled={loading}>
@@ -94,14 +144,14 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
         </div>
 
         {localError && (
-          <div className="alert alert-danger" role="alert">
+          <div className="alert alert-danger" role="alert" style={{ margin: '0 24px 12px' }}>
             <AlertCircle size={20} style={{ flexShrink: 0 }} />
             <span>{localError}</span>
           </div>
         )}
 
         <form onSubmit={handleSubmit}>
-            <div className="form-group">
+            <div className="form-group" style={{ padding: '0 24px' }}>
               <label className="form-label" htmlFor="modal-name">Nombre Completo</label>
               <div className="input-container">
                 <input
@@ -118,7 +168,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
               </div>
             </div>
 
-            <div className="form-group">
+            <div className="form-group" style={{ padding: '0 24px' }}>
               <label className="form-label" htmlFor="modal-email">Correo Electrónico</label>
               <div className="input-container">
                 <input
@@ -136,7 +186,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
             </div>
 
             {!isEdit && (
-              <div className="form-group">
+              <div className="form-group" style={{ padding: '0 24px' }}>
                 <label className="form-label" htmlFor="modal-password">Contraseña</label>
                 <div className="input-container">
                   <input
@@ -162,7 +212,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
               </div>
             )}
 
-            <div className="form-group">
+            <div className="form-group" style={{ padding: '0 24px' }}>
               <label className="form-label" htmlFor="modal-role">Rol</label>
               <div className="input-container">
                 <select
@@ -178,6 +228,95 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
                 </select>
               </div>
             </div>
+
+            {isProfesor && (
+              <div className="form-group" style={{ padding: '0 24px' }}>
+                <label className="form-label" style={{ marginBottom: '8px' }}>
+                  Materias Asignadas {allSubjects.length > 0 && <span style={{ color: 'var(--color-text-muted)', fontSize: '12px' }}>({form.subjectIds?.length ?? 0} seleccionadas)</span>}
+                </label>
+                {loadingSubjects ? (
+                  <div className="user-mgmt-loading" style={{ padding: '12px 0' }}>
+                    <div className="spinner" style={{ width: '18px', height: '18px' }}></div>
+                    <span style={{ fontSize: '13px' }}>Cargando materias...</span>
+                  </div>
+                ) : allSubjects.length === 0 ? (
+                  <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)' }}>No hay materias disponibles. Crea un plan de estudios primero.</p>
+                ) : (
+                  <div style={{
+                    maxHeight: '240px',
+                    overflowY: 'auto',
+                    border: '1px solid var(--border-glass)',
+                    borderRadius: 'var(--radius-input)',
+                    padding: '8px',
+                    background: 'var(--bg-card)',
+                  }}>
+                    {Object.entries(
+                      allSubjects.reduce((acc, s) => {
+                        const key = `plan-${s.planId}`;
+                        if (!acc[key]) acc[key] = [];
+                        acc[key].push(s);
+                        return acc;
+                      }, {} as Record<string, Subject[]>)
+                    ).map(([planKey, planSubjects]) => (
+                      <div key={planKey} style={{ marginBottom: '8px' }}>
+                        <div style={{
+                          fontSize: '11px',
+                          fontWeight: 600,
+                          color: 'var(--accent-primary)',
+                          padding: '4px 8px',
+                          textTransform: 'uppercase',
+                          letterSpacing: '0.5px',
+                        }}>
+                          Plan: {planKey}
+                        </div>
+                        {Object.entries(
+                          planSubjects.reduce((acc, s) => {
+                            const key = `mod${s.modulo}`;
+                            if (!acc[key]) acc[key] = [];
+                            acc[key].push(s);
+                            return acc;
+                          }, {} as Record<string, Subject[]>)
+                        ).sort(([a], [b]) => a.localeCompare(b)).map(([modKey, modSubjects]) => (
+                          <div key={modKey} style={{ marginBottom: '4px' }}>
+                            <div style={{ fontSize: '12px', fontWeight: 500, color: 'var(--color-text-secondary)', padding: '2px 8px' }}>
+                              Módulo {modKey.replace('mod', '')}
+                            </div>
+                            {modSubjects.sort((a, b) => a.order - b.order).map(s => {
+                              const checked = form.subjectIds?.includes(s.id) ?? false;
+                              return (
+                                <label
+                                  key={s.id}
+                                  style={{
+                                    display: 'flex',
+                                    alignItems: 'center',
+                                    gap: '8px',
+                                    padding: '3px 8px 3px 16px',
+                                    cursor: 'pointer',
+                                    fontSize: '13px',
+                                    borderRadius: '6px',
+                                    transition: 'var(--transition-smooth)',
+                                  }}
+                                  onMouseEnter={e => (e.currentTarget.style.background = 'var(--bg-glass)')}
+                                  onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+                                >
+                                  <input
+                                    type="checkbox"
+                                    checked={checked}
+                                    onChange={() => toggleSubject(s.id)}
+                                    style={{ accentColor: 'var(--accent-primary)' }}
+                                  />
+                                  {s.nombre}
+                                </label>
+                              );
+                            })}
+                          </div>
+                        ))}
+                      </div>
+                    ))}
+                  </div>
+                )}
+              </div>
+            )}
 
             <div className="modal-actions">
               <button type="button" className="btn-secondary" onClick={onClose} disabled={loading}>

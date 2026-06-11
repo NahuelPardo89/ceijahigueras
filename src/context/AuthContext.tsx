@@ -33,6 +33,7 @@ export interface AuthUser {
   createdAt?: string;
   role: UserRole;
   disabled?: boolean;
+  subjectIds?: string[];
 }
 
 export interface UserRecord {
@@ -42,6 +43,7 @@ export interface UserRecord {
   role: UserRole;
   createdAt: string;
   disabled?: boolean;
+  subjectIds?: string[];
 }
 
 interface AuthContextType {
@@ -56,8 +58,8 @@ interface AuthContextType {
   clearError: () => void;
   getAllUsers: () => Promise<UserRecord[]>;
   updateUserRole: (uid: string, role: UserRole) => Promise<void>;
-  createUser: (email: string, password: string, displayName: string, role: UserRole) => Promise<void>;
-  updateUser: (uid: string, data: { displayName?: string; role?: UserRole }) => Promise<void>;
+  createUser: (email: string, password: string, displayName: string, role: UserRole, subjectIds?: string[]) => Promise<void>;
+  updateUser: (uid: string, data: { displayName?: string; role?: UserRole; subjectIds?: string[] }) => Promise<void>;
   disableUser: (uid: string, disabled: boolean) => Promise<void>;
 }
 
@@ -83,12 +85,14 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (firebaseUser) {
         let role: UserRole = 'Profesor';
         let docDisabled = false;
+        let subjectIds: string[] | undefined;
         try {
           const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (snap.exists()) {
             const data = snap.data();
             role = (data.role as UserRole) || 'Profesor';
             docDisabled = data.disabled === true;
+            subjectIds = data.subjectIds as string[] | undefined;
           }
         } catch (err) {
           console.warn('No se pudo leer el rol desde Firestore, usando valor por defecto:', err);
@@ -108,6 +112,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           photoURL: firebaseUser.photoURL,
           role,
           disabled: docDisabled,
+          subjectIds,
         });
       } else {
         setUser(null);
@@ -211,7 +216,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const getAllUsers = async (): Promise<UserRecord[]> => {
     const q = query(collection(db, 'users'), limit(100));
     const snap = await getDocs(q);
-    return snap.docs.map(d => ({ uid: d.id, ...d.data() } as UserRecord));
+    return snap.docs.map(d => {
+      const data = d.data();
+      return {
+        uid: d.id,
+        email: data.email ?? null,
+        displayName: data.displayName ?? null,
+        role: data.role as UserRole,
+        createdAt: data.createdAt ?? '',
+        disabled: data.disabled ?? false,
+        subjectIds: data.subjectIds as string[] | undefined,
+      };
+    });
   };
 
   const updateUserRole = useCallback(async (uid: string, role: UserRole) => {
@@ -221,7 +237,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  const createUser = useCallback(async (email: string, password: string, displayName: string, role: UserRole) => {
+  const createUser = useCallback(async (email: string, password: string, displayName: string, role: UserRole, subjectIds?: string[]) => {
     if (user?.role !== 'Administrador') {
       setError('No tienes permisos para crear usuarios.');
       throw new Error('No autorizado');
@@ -250,6 +266,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role,
         createdAt: new Date().toISOString(),
         disabled: false,
+        ...(subjectIds ? { subjectIds } : {}),
       });
     } catch (err) {
       console.error(err);
@@ -260,15 +277,24 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
-  const updateUser = useCallback(async (uid: string, data: { displayName?: string; role?: UserRole }) => {
-    const updates: Record<string, string> = {};
+  const updateUser = useCallback(async (uid: string, data: { displayName?: string; role?: UserRole; subjectIds?: string[] }) => {
+    const updates: Record<string, unknown> = {};
     if (data.displayName !== undefined) updates.displayName = data.displayName;
     if (data.role !== undefined) updates.role = data.role;
+    if (data.subjectIds !== undefined) updates.subjectIds = data.subjectIds;
     if (Object.keys(updates).length === 0) return;
 
     await updateDoc(doc(db, 'users', uid), updates);
     if (user?.uid === uid) {
-      setUser(prev => prev ? { ...prev, ...updates } as AuthUser : prev);
+      setUser(prev => {
+        if (!prev) return prev;
+        return {
+          ...prev,
+          ...(data.displayName !== undefined ? { displayName: data.displayName } : {}),
+          ...(data.role !== undefined ? { role: data.role } : {}),
+          ...(data.subjectIds !== undefined ? { subjectIds: data.subjectIds } : {}),
+        };
+      });
     }
   }, [user]);
 

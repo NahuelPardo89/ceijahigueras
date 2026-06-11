@@ -1,4 +1,5 @@
 import { useEffect, useState, useMemo } from 'react';
+import { useAuth } from '../../hooks/useAuth';
 import { useStudents, type StudentRecord } from '../../hooks/useStudents';
 import { useSubjects, type Subject } from '../../hooks/useSubjects';
 import { useGrades, type Grade } from '../../hooks/useGrades';
@@ -15,6 +16,7 @@ const FILTERS: { key: PlanFilter; label: string }[] = [
 ];
 
 export const GradesManagement = () => {
+  const { user } = useAuth();
   const { getAllStudents } = useStudents();
   const { getSubjectsByPlan } = useSubjects();
   const { getGradesByStudent, deleteGrade } = useGrades();
@@ -345,7 +347,10 @@ export const GradesManagement = () => {
         <GradesFormModal
           student={selectedStudent}
           planId={selectedStudent.planId || ''}
-          subjects={subjectsByPlan[selectedStudent.planId || ''] || []}
+          subjects={user?.role === 'Profesor' && user.subjectIds
+            ? (subjectsByPlan[selectedStudent.planId || ''] || []).filter(s => user.subjectIds!.includes(s.id))
+            : (subjectsByPlan[selectedStudent.planId || ''] || [])
+          }
           initialData={editGrade}
           onClose={() => { setShowModal(false); setEditGrade(null); }}
           onSuccess={handleGradeSuccess}

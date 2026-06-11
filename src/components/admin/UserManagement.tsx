@@ -181,6 +181,9 @@ export const UserManagement = () => {
                       {u.displayName || 'Sin nombre'}
                       {isSelf && <span className="self-tag">Tú</span>}
                       {isDisabled && <span className="badge-disabled">Deshabilitado</span>}
+                      {u.role === 'Profesor' && u.subjectIds && u.subjectIds.length > 0 && (
+                        <span className="badge-subjects">{u.subjectIds.length} materias</span>
+                      )}
                     </span>
                     <span className="user-email">{u.email}</span>
                   </div>
@@ -265,6 +268,7 @@ export const UserManagement = () => {
             password: '',
             displayName: editUser.displayName ?? '',
             role: editUser.role,
+            subjectIds: editUser.subjectIds ?? [],
           }}
           onClose={() => { setShowModal(null); setEditUser(null); }}
           onSuccess={handleSuccess}
