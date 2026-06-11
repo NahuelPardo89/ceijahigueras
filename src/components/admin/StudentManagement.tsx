@@ -429,45 +429,39 @@ export const StudentManagement = () => {
                 Sin calificaciones cargadas.
               </p>
             ) : (
-              <div style={{ padding: '0 24px 12px', display: 'flex', flexDirection: 'column', gap: '8px', maxHeight: '400px', overflowY: 'auto' }}>
-                {Object.entries(groupedGradeModalGrades).sort(([a], [b]) => Number(a) - Number(b)).map(([mod, modGrades]) => (
-                  <div key={mod} style={{
-                    background: 'var(--bg-card)',
-                    borderRadius: '8px',
-                    border: '1px solid var(--border-glass)',
-                    overflow: 'hidden',
-                  }}>
-                    <div style={{
-                      padding: '6px 12px',
-                      fontSize: '12px',
-                      fontWeight: 600,
-                      color: 'var(--color-text-secondary)',
-                      borderBottom: '1px solid var(--border-glass)',
-                      background: 'var(--bg-glass)',
-                    }}>
-                      Módulo {mod}
-                    </div>
-                    <div style={{ padding: '6px 12px' }}>
-                      <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
-                        <thead>
-                          <tr style={{ color: 'var(--color-text-muted)' }}>
-                            <th style={{ textAlign: 'left', padding: '4px 8px', fontWeight: 500 }}>Materia</th>
-                            <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 500 }}>Nota</th>
-                            <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 500 }}>Fecha</th>
-                            <th style={{ textAlign: 'center', padding: '4px 8px', fontWeight: 500 }}>Acción</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          {modGrades.map(g => (
-                            <tr key={g.id} style={{ borderTop: '1px solid var(--border-glass)' }}>
-                              <td style={{ padding: '6px 8px' }}>{getSubjectNameInModal(g.subjectId)}</td>
-                              <td style={{ padding: '6px 8px', textAlign: 'center', fontWeight: 600 }}>
-                                {g.nota}
+              <div style={{ padding: '0 24px 12px', maxHeight: '400px', overflowY: 'auto' }}>
+                <div style={{
+                  background: 'var(--bg-card)',
+                  borderRadius: '8px',
+                  border: '1px solid var(--border-glass)',
+                  overflow: 'hidden',
+                }}>
+                  <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                    <thead>
+                      <tr style={{ color: 'var(--color-text-muted)', background: 'var(--bg-glass)' }}>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Módulo</th>
+                        <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Materia</th>
+                        <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Nota</th>
+                        <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Fecha</th>
+                        <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Acción</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {Object.entries(groupedGradeModalGrades)
+                        .sort(([a], [b]) => Number(a) - Number(b))
+                        .flatMap(([mod, modGrades]) =>
+                          modGrades.map((g, i) => (
+                            <tr key={g.id} style={{
+                              borderBottom: '1px solid var(--border-glass)',
+                              background: i % 2 === 1 ? 'var(--bg-glass)' : undefined,
+                            }}>
+                              <td style={{ padding: '8px 10px', color: 'var(--color-text-secondary)', fontWeight: 500, whiteSpace: 'nowrap' }}>
+                                M{mod}
                               </td>
-                              <td style={{ padding: '6px 8px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
-                                {g.fecha}
-                              </td>
-                              <td style={{ padding: '6px 8px', textAlign: 'center' }}>
+                              <td style={{ padding: '8px 10px' }}>{getSubjectNameInModal(g.subjectId)}</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>{g.nota}</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{g.fecha}</td>
+                              <td style={{ padding: '8px 10px', textAlign: 'center' }}>
                                 <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
                                   <button
                                     className="btn-icon-round btn-action-edit"
@@ -488,12 +482,11 @@ export const StudentManagement = () => {
                                 </div>
                               </td>
                             </tr>
-                          ))}
-                        </tbody>
-                      </table>
-                    </div>
-                  </div>
-                ))}
+                          ))
+                        )}
+                    </tbody>
+                  </table>
+                </div>
               </div>
             )}
 
