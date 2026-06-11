@@ -1,9 +1,10 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, lazy, Suspense } from 'react';
 import { Users, GraduationCap, BarChart3, FileText, LogOut } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { UserManagement } from './UserManagement';
-import { StudentManagement } from './StudentManagement';
 import { SectionPlaceholder } from './SectionPlaceholder';
+
+const UserManagement = lazy(() => import('./UserManagement').then(m => ({ default: m.UserManagement })));
+const StudentManagement = lazy(() => import('./StudentManagement').then(m => ({ default: m.StudentManagement })));
 
 type Section = 'usuarios' | 'estudiantes' | 'calificaciones' | 'documentacion';
 
@@ -41,11 +42,12 @@ export const DashboardLayout = () => {
   if (!user) return null;
 
   const renderContent = () => {
+    const fallback = <div className="user-mgmt-loading"><div className="spinner" style={{ width: '22px', height: '22px' }}></div><span>Cargando...</span></div>;
     switch (currentSection) {
       case 'usuarios':
-        return <UserManagement />;
+        return <Suspense fallback={fallback}><UserManagement /></Suspense>;
       case 'estudiantes':
-        return <StudentManagement />;
+        return <Suspense fallback={fallback}><StudentManagement /></Suspense>;
       default:
         return (
           <SectionPlaceholder

@@ -43,7 +43,8 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
   }, [clearError]);
 
   const handleChange = (field: keyof UserFormData, value: string) => {
-    setForm(prev => ({ ...prev, [field]: value }));
+    const upperFields: (keyof UserFormData)[] = ['displayName', 'email'];
+    setForm(prev => ({ ...prev, [field]: upperFields.includes(field) ? value.toUpperCase() : value }));
   };
 
   const handleSubmit = async (e: FormEvent) => {
