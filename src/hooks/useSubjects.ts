@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './useAuth';
+import { useLogs, logCreate, logUpdate, logDelete } from './useLogs';
 
 export type SubjectType = 'basico' | 'atp' | 'orientacion';
 
@@ -50,6 +51,7 @@ export const DEFAULT_SUBJECTS_ORIENTACION = [
 
 export const useSubjects = () => {
   const { user } = useAuth();
+  const { createLog } = useLogs();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -81,6 +83,7 @@ export const useSubjects = () => {
         ...data,
         createdAt: new Date().toISOString(),
       });
+      await createLog(logCreate('subject', docRef.id, { nombre: data.nombre, modulo: data.modulo, tipo: data.tipo }));
       return docRef.id;
     } catch (err) {
       console.error('Error al crear materia:', err);
@@ -89,7 +92,7 @@ export const useSubjects = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const createDefaultSubjects = useCallback(async (planId: string) => {
     if (!user || user.role !== 'Administrador') return;
@@ -114,10 +117,11 @@ export const useSubjects = () => {
       }
 
       for (const item of batch) {
-        await addDoc(collection(db, 'subjects'), {
+        const docRef = await addDoc(collection(db, 'subjects'), {
           ...item,
           createdAt: new Date().toISOString(),
         });
+        await createLog(logCreate('subject', docRef.id, { nombre: item.nombre, modulo: item.modulo, tipo: item.tipo }));
       }
     } catch (err) {
       console.error('Error al crear materias por defecto:', err);
@@ -126,7 +130,7 @@ export const useSubjects = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const updateSubject = useCallback(async (id: string, data: Partial<CreateSubjectData>) => {
     if (!user || user.role !== 'Administrador') {
@@ -137,6 +141,7 @@ export const useSubjects = () => {
     setError(null);
     try {
       await updateDoc(doc(db, 'subjects', id), data);
+      await createLog(logUpdate('subject', id, data));
     } catch (err) {
       console.error('Error al actualizar materia:', err);
       setError('Error al actualizar la materia.');
@@ -144,7 +149,7 @@ export const useSubjects = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const deleteSubject = useCallback(async (id: string) => {
     if (!user || user.role !== 'Administrador') {
@@ -155,6 +160,7 @@ export const useSubjects = () => {
     setError(null);
     try {
       await deleteDoc(doc(db, 'subjects', id));
+      await createLog(logDelete('subject', id));
     } catch (err) {
       console.error('Error al eliminar materia:', err);
       setError('Error al eliminar la materia.');
@@ -162,7 +168,7 @@ export const useSubjects = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const clearError = useCallback(() => setError(null), []);
 

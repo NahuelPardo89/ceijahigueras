@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, limit } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './useAuth';
+import { useLogs, logCreate, logUpdate, logDelete } from './useLogs';
 
 export interface StudyPlan {
   id: string;
@@ -27,6 +28,7 @@ export interface CreateStudyPlanData {
 
 export const useStudyPlans = () => {
   const { user } = useAuth();
+  const { createLog } = useLogs();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -60,6 +62,7 @@ export const useStudyPlans = () => {
         createdAt: new Date().toISOString(),
         createdBy: user.uid,
       });
+      await createLog(logCreate('studyPlan', docRef.id, { nombre: data.nombre }));
       return docRef.id;
     } catch (err) {
       console.error('Error al crear plan de estudio:', err);
@@ -68,7 +71,7 @@ export const useStudyPlans = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const updatePlan = useCallback(async (id: string, data: Partial<CreateStudyPlanData & { active: boolean }>) => {
     if (!user || user.role !== 'Administrador') {
@@ -79,6 +82,7 @@ export const useStudyPlans = () => {
     setError(null);
     try {
       await updateDoc(doc(db, 'studyPlans', id), data);
+      await createLog(logUpdate('studyPlan', id, data));
     } catch (err) {
       console.error('Error al actualizar plan de estudio:', err);
       setError('Error al actualizar el plan de estudio.');
@@ -86,7 +90,7 @@ export const useStudyPlans = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const deletePlan = useCallback(async (id: string) => {
     if (!user || user.role !== 'Administrador') {
@@ -97,6 +101,7 @@ export const useStudyPlans = () => {
     setError(null);
     try {
       await deleteDoc(doc(db, 'studyPlans', id));
+      await createLog(logDelete('studyPlan', id));
     } catch (err) {
       console.error('Error al eliminar plan de estudio:', err);
       setError('Error al eliminar el plan de estudio.');
@@ -104,7 +109,7 @@ export const useStudyPlans = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const clearError = useCallback(() => setError(null), []);
 

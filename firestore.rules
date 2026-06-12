@@ -8,6 +8,12 @@ service cloud.firestore {
         && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrador';
     }
 
+    function isProfessor() {
+      return request.auth != null
+        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
+        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Profesor';
+    }
+
     function isOwner(uid) {
       return request.auth != null && request.auth.uid == uid;
     }
@@ -33,6 +39,30 @@ service cloud.firestore {
 
     function roleUnchanged() {
       return request.resource.data.role == resource.data.role;
+    }
+
+    function professorSubjectIds() {
+      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subjectIds;
+    }
+
+    function canManageSubject(subjectId) {
+      return subjectId in professorSubjectIds();
+    }
+
+    function hasValidGradeFields() {
+      let data = request.resource.data;
+      return data.keys().hasAll(['studentId', 'subjectId', 'planId', 'nota', 'fecha', 'createdAt'])
+        && data.studentId is string
+        && data.studentId.size() > 0
+        && data.subjectId is string
+        && data.subjectId.size() > 0
+        && data.planId is string
+        && data.planId.size() > 0
+        && data.nota is string
+        && data.nota.size() > 0
+        && data.fecha is string
+        && data.fecha.size() > 0
+        && data.createdAt is string;
     }
 
     match /users/{uid} {
@@ -79,10 +109,17 @@ service cloud.firestore {
     }
 
     match /grades/{gradeId} {
-      allow read: if request.auth != null;
+      allow read: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(resource.data.subjectId)));
+      allow create: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(request.resource.data.subjectId))) && hasValidGradeFields();
+      allow update: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(resource.data.subjectId)));
+      allow delete: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(resource.data.subjectId)));
+    }
+
+    match /logs/{logId} {
+      allow read: if isAdmin();
       allow create: if request.auth != null;
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+      allow update: if false;
+      allow delete: if false;
     }
   }
 }

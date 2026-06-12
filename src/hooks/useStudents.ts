@@ -2,6 +2,7 @@ import { useState, useCallback } from 'react';
 import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, limit, where } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './useAuth';
+import { useLogs, logCreate, logUpdate, logDelete } from './useLogs';
 
 export type StudentStatus = 'activo' | 'inactivo';
 export type StudentModality = 'virtual' | 'presencial';
@@ -78,6 +79,7 @@ export const checkFieldUnique = async (field: 'dni' | 'cuil' | 'email', value: s
 
 export const useStudents = () => {
   const { user } = useAuth();
+  const { createLog } = useLogs();
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
@@ -111,6 +113,7 @@ export const useStudents = () => {
         createdAt: new Date().toISOString(),
         createdBy: user.uid,
       });
+      await createLog(logCreate('student', docRef.id, { apellido: data.apellido, nombre: data.nombre, dni: data.dni }));
       return docRef.id;
     } catch (err) {
       console.error('Error al crear estudiante:', err);
@@ -119,7 +122,7 @@ export const useStudents = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const updateStudent = useCallback(async (id: string, data: Partial<CreateStudentData>) => {
     if (!user || user.role !== 'Administrador') {
@@ -130,6 +133,7 @@ export const useStudents = () => {
     setError(null);
     try {
       await updateDoc(doc(db, 'students', id), data);
+      await createLog(logUpdate('student', id, data));
     } catch (err) {
       console.error('Error al actualizar estudiante:', err);
       setError('Error al actualizar el estudiante.');
@@ -137,7 +141,7 @@ export const useStudents = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const deleteStudent = useCallback(async (id: string) => {
     if (!user || user.role !== 'Administrador') {
@@ -148,6 +152,7 @@ export const useStudents = () => {
     setError(null);
     try {
       await deleteDoc(doc(db, 'students', id));
+      await createLog(logDelete('student', id));
     } catch (err) {
       console.error('Error al eliminar estudiante:', err);
       setError('Error al eliminar el estudiante.');
@@ -155,7 +160,7 @@ export const useStudents = () => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const clearError = useCallback(() => setError(null), []);
 

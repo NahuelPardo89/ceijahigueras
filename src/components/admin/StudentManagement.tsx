@@ -98,13 +98,15 @@ export const StudentManagement = () => {
     setGradeModalGrades([]);
     setGradeModalSubjects([]);
     try {
-      if (s.planId) {
-        const subs = await getSubjectsByPlan(s.planId);
-        setGradeModalSubjects(subs);
-      }
-      const gs = await getGradesByStudent(s.id);
+      const [subs, gs] = await Promise.all([
+        s.planId ? getSubjectsByPlan(s.planId) : Promise.resolve([]),
+        getGradesByStudent(s.id),
+      ]);
+      setGradeModalSubjects(subs);
       setGradeModalGrades(gs);
-    } catch {}
+    } catch (err) {
+      console.error('Error cargando calificaciones:', err);
+    }
   };
 
   const handleGradeFormSuccess = async () => {

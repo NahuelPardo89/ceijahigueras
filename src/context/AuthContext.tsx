@@ -22,6 +22,7 @@ import {
 } from 'firebase/firestore';
 import { auth, db, API_KEY } from '../firebase/config';
 import { getFirebaseErrorMessage } from '../utils/errors';
+import { useLogs, logCreate, logUpdate } from '../hooks/useLogs';
 
 export type UserRole = 'Administrador' | 'Profesor';
 
@@ -77,6 +78,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const [user, setUser] = useState<AuthUser | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
+  const { createLog } = useLogs();
 
   const clearError = () => setError(null);
 
@@ -150,6 +152,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
           createdAt: new Date().toISOString(),
           disabled: false,
         });
+        await createLog(logCreate('user', userCred.user.uid, { email, displayName: name, role: 'Profesor' }));
       }
     } catch (err) {
       console.error(err);
@@ -202,6 +205,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
             createdAt: new Date().toISOString(),
             disabled: false,
           });
+          await createLog(logCreate('user', result.user.uid, { email: result.user.email, displayName: result.user.displayName, role: 'Profesor', provider: 'google' }));
         }
       }
     } catch (err) {
@@ -232,10 +236,11 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
 
   const updateUserRole = useCallback(async (uid: string, role: UserRole) => {
     await updateDoc(doc(db, 'users', uid), { role });
+    await createLog(logUpdate('user', uid, { role }));
     if (user?.uid === uid) {
       setUser(prev => prev ? { ...prev, role } : prev);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const createUser = useCallback(async (email: string, password: string, displayName: string, role: UserRole, subjectIds?: string[]) => {
     if (user?.role !== 'Administrador') {
@@ -268,6 +273,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         disabled: false,
         ...(subjectIds ? { subjectIds } : {}),
       });
+      await createLog(logCreate('user', data.localId, { email, displayName, role, subjectIds }));
     } catch (err) {
       console.error(err);
       setError(getFirebaseErrorMessage(err, 'signUp'));
@@ -275,7 +281,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     } finally {
       setLoading(false);
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const updateUser = useCallback(async (uid: string, data: { displayName?: string; role?: UserRole; subjectIds?: string[] }) => {
     const updates: Record<string, unknown> = {};
@@ -285,6 +291,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     if (Object.keys(updates).length === 0) return;
 
     await updateDoc(doc(db, 'users', uid), updates);
+    await createLog(logUpdate('user', uid, updates));
     if (user?.uid === uid) {
       setUser(prev => {
         if (!prev) return prev;
@@ -296,12 +303,13 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         };
       });
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const disableUser = useCallback(async (uid: string, disabled: boolean) => {
     setError(null);
     try {
       await updateDoc(doc(db, 'users', uid), { disabled });
+      await createLog(logUpdate('user', uid, { disabled }));
       if (user?.uid === uid) {
         await firebaseSignOut(auth);
       }
@@ -310,7 +318,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       setError('Error al actualizar el estado del usuario.');
       throw err;
     }
-  }, [user]);
+  }, [user, createLog]);
 
   const value = useMemo(() => ({
     user,
