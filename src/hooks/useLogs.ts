@@ -4,7 +4,7 @@ import { db } from '../firebase/config';
 import { useAuth } from './useAuth';
 
 export type LogAction = 'create' | 'update' | 'delete';
-export type LogEntity = 'user' | 'student' | 'grade' | 'subject' | 'studyPlan';
+export type LogEntity = 'user' | 'student' | 'grade' | 'subject' | 'studyPlan' | 'equivalence';
 
 export interface LogEntry {
   id?: string;
@@ -17,6 +17,25 @@ export interface LogEntry {
   entityId: string;
   details?: Record<string, unknown>;
 }
+
+export const writeLog = async (
+  userId: string,
+  userEmail: string | null,
+  userRole: string,
+  entry: { action: LogAction; entity: LogEntity; entityId: string; details?: Record<string, unknown> }
+) => {
+  try {
+    await addDoc(collection(db, 'logs'), {
+      ...entry,
+      timestamp: new Date().toISOString(),
+      userId,
+      userEmail,
+      userRole,
+    });
+  } catch (err) {
+    console.error('Error creando log:', err);
+  }
+};
 
 export const useLogs = () => {
   const { user } = useAuth();

@@ -3,8 +3,10 @@ import { useAuth } from '../../hooks/useAuth';
 import { useStudents, type StudentRecord } from '../../hooks/useStudents';
 import { useSubjects, type Subject } from '../../hooks/useSubjects';
 import { useGrades, type Grade } from '../../hooks/useGrades';
+import { useEquivalences, type Equivalence } from '../../hooks/useEquivalences';
 import { GradesFormModal } from './GradesFormModal';
-import { GraduationCap, RefreshCw, Search, Plus } from 'lucide-react';
+import { EquivalenceFormModal } from './EquivalenceFormModal';
+import { GraduationCap, RefreshCw, Search, Plus, BookOpen } from 'lucide-react';
 
 type PlanFilter = 'Plan A' | 'Plan B' | 'Plan C' | 'virtuales';
 
@@ -20,6 +22,7 @@ export const GradesManagement = () => {
   const { getAllStudents } = useStudents();
   const { getSubjectsByPlan } = useSubjects();
   const { getGradesByStudent, deleteGrade } = useGrades();
+  const { getEquivalencesByStudent, deleteEquivalence } = useEquivalences();
 
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [subjectsByPlan, setSubjectsByPlan] = useState<Record<string, Subject[]>>({});
@@ -32,6 +35,9 @@ export const GradesManagement = () => {
   const [editGrade, setEditGrade] = useState<Grade | null>(null);
   const [expandedStudent, setExpandedStudent] = useState<string | null>(null);
   const [loadingGrades, setLoadingGrades] = useState(false);
+  const [equivalences, setEquivalences] = useState<Equivalence[]>([]);
+  const [showEqModal, setShowEqModal] = useState(false);
+  const [editEquivalence, setEditEquivalence] = useState<Equivalence | null>(null);
 
   useEffect(() => {
     let cancelled = false;
@@ -69,12 +75,16 @@ export const GradesManagement = () => {
     if (expandedStudent === student.id) {
       setExpandedStudent(null);
       setGrades([]);
+      setEquivalences([]);
       return;
     }
     setExpandedStudent(student.id);
     setSelectedStudent(student);
     setLoadingGrades(true);
-    await loadGradesForStudent(student.id);
+    await Promise.all([
+      loadGradesForStudent(student.id),
+      getEquivalencesByStudent(student.id).then(setEquivalences),
+    ]);
     setLoadingGrades(false);
   };
 
@@ -82,6 +92,7 @@ export const GradesManagement = () => {
     setLoadingData(true);
     setExpandedStudent(null);
     setGrades([]);
+    setEquivalences([]);
     getAllStudents()
       .then(s => {
         setStudents(s);
@@ -115,6 +126,23 @@ export const GradesManagement = () => {
     try {
       await deleteGrade(grade.id);
       setGrades(prev => prev.filter(g => g.id !== grade.id));
+    } catch {}
+  };
+
+  const handleEqSuccess = async () => {
+    setShowEqModal(false);
+    setEditEquivalence(null);
+    if (expandedStudent) {
+      const eqData = await getEquivalencesByStudent(expandedStudent);
+      setEquivalences(eqData);
+    }
+  };
+
+  const handleDeleteEquivalence = async (eq: Equivalence) => {
+    if (!window.confirm('¿Estás seguro de eliminar esta equivalencia?')) return;
+    try {
+      await deleteEquivalence(eq.id);
+      setEquivalences(prev => prev.filter(e => e.id !== eq.id));
     } catch {}
   };
 
@@ -207,7 +235,7 @@ export const GradesManagement = () => {
             <button
               key={f.key}
               className={`btn-filter-tab ${filter === f.key ? 'btn-filter-tab-active' : ''}`}
-              onClick={() => { setFilter(f.key); setExpandedStudent(null); setGrades([]); }}
+              onClick={() => { setFilter(f.key); setExpandedStudent(null); setGrades([]); setEquivalences([]); }}
             >
               {f.label}
               <span className="filter-count">
@@ -334,6 +362,81 @@ export const GradesManagement = () => {
                         <span style={{ fontSize: '13px' }}>Agregar calificación</span>
                       </button>
                     </div>
+
+                    <div style={{ marginTop: '24px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginBottom: '12px' }}>
+                        <BookOpen size={16} style={{ color: 'var(--accent-primary)' }} />
+                        <span style={{ fontWeight: 600, fontSize: '14px' }}>Equivalencias</span>
+                      </div>
+
+                      {equivalences.length === 0 ? (
+                        <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', textAlign: 'center', padding: '12px 0' }}>
+                          Sin equivalencias cargadas.
+                        </p>
+                      ) : (
+                        <div style={{
+                          background: 'var(--bg-card)',
+                          borderRadius: '8px',
+                          border: '1px solid var(--border-glass)',
+                          overflow: 'hidden',
+                        }}>
+                          <table style={{ width: '100%', borderCollapse: 'collapse', fontSize: '13px' }}>
+                            <thead>
+                              <tr style={{ color: 'var(--color-text-muted)', background: 'var(--bg-glass)' }}>
+                                <th style={{ textAlign: 'left', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Materia</th>
+                                <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Nota</th>
+                                <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Fecha</th>
+                                <th style={{ textAlign: 'center', padding: '8px 10px', fontWeight: 600, borderBottom: '1px solid var(--border-glass)' }}>Acción</th>
+                              </tr>
+                            </thead>
+                            <tbody>
+                              {equivalences.map((eq, i) => (
+                                <tr key={eq.id} style={{
+                                  borderBottom: '1px solid var(--border-glass)',
+                                  background: i % 2 === 1 ? 'var(--bg-glass)' : undefined,
+                                }}>
+                                  <td style={{ padding: '8px 10px', fontWeight: 500 }}>{eq.nombre}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>{eq.nota}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--color-text-secondary)', whiteSpace: 'nowrap' }}>{eq.fecha}</td>
+                                  <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                    <div style={{ display: 'flex', gap: '4px', justifyContent: 'center' }}>
+                                      <button
+                                        className="btn-icon-round btn-action-edit"
+                                        onClick={() => { setEditEquivalence(eq); setShowEqModal(true); }}
+                                        title="Editar"
+                                        style={{ width: '24px', height: '24px' }}
+                                      >
+                                        <span style={{ fontSize: '11px' }}>✎</span>
+                                      </button>
+                                      <button
+                                        className="btn-icon-round btn-action-disable"
+                                        onClick={() => handleDeleteEquivalence(eq)}
+                                        title="Eliminar"
+                                        style={{ width: '24px', height: '24px' }}
+                                      >
+                                        <span style={{ fontSize: '11px' }}>✕</span>
+                                      </button>
+                                    </div>
+                                  </td>
+                                </tr>
+                              ))}
+                            </tbody>
+                          </table>
+                        </div>
+                      )}
+
+                      <div style={{ marginTop: '12px', textAlign: 'center' }}>
+                        <button
+                          className="btn-icon-round btn-add-user"
+                          onClick={() => { setSelectedStudent(s); setEditEquivalence(null); setShowEqModal(true); }}
+                          title="Agregar equivalencia"
+                          style={{ width: 'auto', padding: '6px 16px', borderRadius: '6px', gap: '6px', display: 'inline-flex', alignItems: 'center' }}
+                        >
+                          <Plus size={14} />
+                          <span style={{ fontSize: '13px' }}>Agregar equivalencia</span>
+                        </button>
+                      </div>
+                    </div>
                   </div>
                 )}
               </div>
@@ -353,6 +456,15 @@ export const GradesManagement = () => {
           initialData={editGrade}
           onClose={() => { setShowModal(false); setEditGrade(null); }}
           onSuccess={handleGradeSuccess}
+        />
+      )}
+
+      {showEqModal && selectedStudent && (
+        <EquivalenceFormModal
+          student={selectedStudent}
+          initialData={editEquivalence}
+          onClose={() => { setShowEqModal(false); setEditEquivalence(null); }}
+          onSuccess={handleEqSuccess}
         />
       )}
     </div>
