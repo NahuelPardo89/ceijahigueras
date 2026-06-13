@@ -1,38 +1,20 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
-import { Users, GraduationCap, BarChart3, FileText, BookOpen, LogOut } from 'lucide-react';
+import { Users, GraduationCap, BarChart3, BookOpen, LogOut } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
-import { SectionPlaceholder } from './SectionPlaceholder';
 
 const UserManagement = lazy(() => import('./UserManagement').then(m => ({ default: m.UserManagement })));
 const StudentManagement = lazy(() => import('./StudentManagement').then(m => ({ default: m.StudentManagement })));
 const StudyPlanManagement = lazy(() => import('./StudyPlanManagement').then(m => ({ default: m.StudyPlanManagement })));
 const GradesManagement = lazy(() => import('./GradesManagement').then(m => ({ default: m.GradesManagement })));
 
-type Section = 'usuarios' | 'estudiantes' | 'plan-estudios' | 'calificaciones' | 'documentacion';
+type Section = 'usuarios' | 'estudiantes' | 'plan-estudios' | 'calificaciones';
 
 const allSections: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'usuarios', label: 'Gestión de Usuarios', icon: <Users size={18} /> },
   { id: 'estudiantes', label: 'Gestión de Estudiantes', icon: <GraduationCap size={18} /> },
   { id: 'plan-estudios', label: 'Plan de Estudios', icon: <BookOpen size={18} /> },
   { id: 'calificaciones', label: 'Gestión de Calificaciones', icon: <BarChart3 size={18} /> },
-  { id: 'documentacion', label: 'Gestión de Documentación', icon: <FileText size={18} /> },
 ];
-
-const sectionTitles: Record<Section, string> = {
-  usuarios: 'Gestión de Usuarios',
-  estudiantes: 'Gestión de Estudiantes',
-  'plan-estudios': 'Plan de Estudios',
-  calificaciones: 'Gestión de Calificaciones',
-  documentacion: 'Gestión de Documentación',
-};
-
-const sectionDescriptions: Record<Section, string> = {
-  usuarios: 'Administra los usuarios del sistema: crea, edita o deshabilita cuentas.',
-  estudiantes: 'Gestiona los estudiantes registrados en la institución.',
-  'plan-estudios': 'Administra los planes de estudio y sus materias.',
-  calificaciones: 'Administra las calificaciones y el rendimiento académico.',
-  documentacion: 'Gestiona la documentación y archivos del sistema.',
-};
 
 export const DashboardLayout = () => {
   const { user, signOut, loading } = useAuth();
@@ -58,12 +40,7 @@ export const DashboardLayout = () => {
       case 'calificaciones':
         return <Suspense fallback={fallback}><GradesManagement /></Suspense>;
       default:
-        return (
-          <SectionPlaceholder
-            title={sectionTitles[currentSection]}
-            description={sectionDescriptions[currentSection]}
-          />
-        );
+        return null;
     }
   };
 

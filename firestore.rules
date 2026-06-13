@@ -109,7 +109,7 @@ service cloud.firestore {
     }
 
     match /grades/{gradeId} {
-      allow read: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(resource.data.subjectId)));
+      allow read: if request.auth != null;
       allow create: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(request.resource.data.subjectId))) && hasValidGradeFields();
       allow update: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(resource.data.subjectId)));
       allow delete: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(resource.data.subjectId)));
