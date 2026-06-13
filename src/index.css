@@ -1784,3 +1784,68 @@ button.text-link {
 .toast-enter {
   animation: toastSlideIn 0.3s ease-out;
 }
+
+.stat-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-card);
+  padding: 20px 24px;
+  flex: 1;
+  min-width: 160px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 4px;
+}
+.stat-card-icon {
+  color: var(--accent-primary);
+  margin-bottom: 4px;
+}
+.stat-card-value {
+  font-size: 28px;
+  font-weight: 700;
+  color: var(--color-text-primary);
+  line-height: 1.1;
+}
+.stat-card-label {
+  font-size: 13px;
+  color: var(--color-text-secondary);
+  text-align: center;
+}
+.stat-table-card {
+  background: var(--bg-card);
+  border: 1px solid var(--border-glass);
+  border-radius: var(--radius-card);
+  padding: 16px;
+  flex: 1;
+  min-width: 240px;
+}
+.stat-table-title {
+  font-size: 14px;
+  font-weight: 600;
+  margin-bottom: 12px;
+  color: var(--color-text-primary);
+}
+.stat-table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+.stat-table th {
+  text-align: left;
+  padding: 6px 8px;
+  font-weight: 600;
+  color: var(--color-text-muted);
+  border-bottom: 1px solid var(--border-glass);
+  font-size: 12px;
+  text-transform: uppercase;
+  letter-spacing: 0.5px;
+}
+.stat-table td {
+  padding: 6px 8px;
+  border-bottom: 1px solid var(--border-glass);
+  color: var(--color-text-secondary);
+}
+.stat-table tbody tr:last-child td {
+  border-bottom: none;
+}

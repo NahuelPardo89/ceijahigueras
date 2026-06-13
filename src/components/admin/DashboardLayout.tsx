@@ -1,19 +1,21 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
-import { Users, GraduationCap, BarChart3, BookOpen, LogOut } from 'lucide-react';
+import { Users, GraduationCap, BarChart3, BookOpen, LogOut, TrendingUp } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const UserManagement = lazy(() => import('./UserManagement').then(m => ({ default: m.UserManagement })));
 const StudentManagement = lazy(() => import('./StudentManagement').then(m => ({ default: m.StudentManagement })));
 const StudyPlanManagement = lazy(() => import('./StudyPlanManagement').then(m => ({ default: m.StudyPlanManagement })));
 const GradesManagement = lazy(() => import('./GradesManagement').then(m => ({ default: m.GradesManagement })));
+const Statistics = lazy(() => import('./Statistics').then(m => ({ default: m.Statistics })));
 
-type Section = 'usuarios' | 'estudiantes' | 'plan-estudios' | 'calificaciones';
+type Section = 'usuarios' | 'estudiantes' | 'plan-estudios' | 'calificaciones' | 'estadisticas';
 
 const allSections: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'usuarios', label: 'Gestión de Usuarios', icon: <Users size={18} /> },
   { id: 'estudiantes', label: 'Gestión de Estudiantes', icon: <GraduationCap size={18} /> },
   { id: 'plan-estudios', label: 'Plan de Estudios', icon: <BookOpen size={18} /> },
   { id: 'calificaciones', label: 'Gestión de Calificaciones', icon: <BarChart3 size={18} /> },
+  { id: 'estadisticas', label: 'Estadísticas', icon: <TrendingUp size={18} /> },
 ];
 
 export const DashboardLayout = () => {
@@ -39,6 +41,8 @@ export const DashboardLayout = () => {
         return <Suspense fallback={fallback}><StudyPlanManagement /></Suspense>;
       case 'calificaciones':
         return <Suspense fallback={fallback}><GradesManagement /></Suspense>;
+      case 'estadisticas':
+        return <Suspense fallback={fallback}><Statistics /></Suspense>;
       default:
         return null;
     }
