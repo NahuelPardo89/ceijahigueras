@@ -8,7 +8,10 @@ import {
   onAuthStateChanged,
   updateProfile,
   GoogleAuthProvider,
-  signInWithPopup
+  signInWithPopup,
+  reauthenticateWithCredential,
+  EmailAuthProvider,
+  updatePassword as fbUpdatePassword
 } from 'firebase/auth';
 import {
   doc,
@@ -62,6 +65,7 @@ interface AuthContextType {
   createUser: (email: string, password: string, displayName: string, role: UserRole, subjectIds?: string[]) => Promise<void>;
   updateUser: (uid: string, data: { displayName?: string; role?: UserRole; subjectIds?: string[] }) => Promise<void>;
   disableUser: (uid: string, disabled: boolean) => Promise<void>;
+  updateUserPassword: (currentPassword: string, newPassword: string) => Promise<void>;
 }
 
 export const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -324,6 +328,23 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     }
   }, [user]);
 
+  const updateUserPassword = useCallback(async (currentPassword: string, newPassword: string) => {
+    if (!user || !auth.currentUser) throw new Error('No autenticado');
+    setLoading(true);
+    setError(null);
+    try {
+      const credential = EmailAuthProvider.credential(auth.currentUser.email!, currentPassword);
+      await reauthenticateWithCredential(auth.currentUser, credential);
+      await fbUpdatePassword(auth.currentUser, newPassword);
+    } catch (err) {
+      console.error(err);
+      setError(getFirebaseErrorMessage(err, 'generic'));
+      throw err;
+    } finally {
+      setLoading(false);
+    }
+  }, [user]);
+
   const value = useMemo(() => ({
     user,
     loading,
@@ -339,7 +360,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
     createUser,
     updateUser,
     disableUser,
-  }), [user, loading, error, updateUserRole, createUser, updateUser, disableUser]);
+    updateUserPassword,
+  }), [user, loading, error, updateUserRole, createUser, updateUser, disableUser, updateUserPassword]);
 
   return (
     <AuthContext.Provider value={value}>

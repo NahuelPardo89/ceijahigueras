@@ -1,6 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useStudents, type StudentRecord } from '../../hooks/useStudents';
-import { BarChart3, Users, GraduationCap, Monitor } from 'lucide-react';
+import { BarChart3, Users, GraduationCap, Monitor, Download } from 'lucide-react';
+import { exportToExcel } from '../../hooks/useExport';
 
 const AGE_RANGES = [
   '15', '16', '17', '18', '19', '20', '21', '22', '23', '24',
@@ -100,6 +101,22 @@ export const Statistics = () => {
     return totals;
   }, [agePlanTable]);
 
+  const handleExport = () => {
+    if (loading) return;
+    const rows = AGE_RANGES.flatMap(range => {
+      const row = agePlanTable[range];
+      if (!row || row.Total === 0) return [];
+      return [{ edad: range, planA: row['Plan A'], planB: row['Plan B'], planC: row['Plan C'], total: row.Total }];
+    });
+    exportToExcel(rows, [
+      { header: 'Edad', accessor: r => r.edad },
+      { header: 'Plan A', accessor: r => r.planA },
+      { header: 'Plan B', accessor: r => r.planB },
+      { header: 'Plan C', accessor: r => r.planC },
+      { header: 'Total', accessor: r => r.total },
+    ], 'estadisticas-edad-plan');
+  };
+
   if (loading) {
     return (
       <div className="user-mgmt-panel">
@@ -118,6 +135,14 @@ export const Statistics = () => {
           <BarChart3 size={20} style={{ color: 'var(--accent-primary)' }} />
           <span style={{ fontWeight: 600, fontSize: '15px' }}>Estadísticas</span>
         </div>
+        <button
+          className="btn-icon-round btn-add-user"
+          onClick={handleExport}
+          title="Exportar a Excel"
+          aria-label="Exportar estadísticas a Excel"
+        >
+          <Download size={15} />
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>

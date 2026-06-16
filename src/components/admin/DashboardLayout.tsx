@@ -1,5 +1,5 @@
 import { useState, useMemo, lazy, Suspense } from 'react';
-import { Users, GraduationCap, BarChart3, BookOpen, LogOut, TrendingUp } from 'lucide-react';
+import { Users, GraduationCap, BarChart3, BookOpen, LogOut, TrendingUp, Search, UserCog } from 'lucide-react';
 import { useAuth } from '../../hooks/useAuth';
 
 const UserManagement = lazy(() => import('./UserManagement').then(m => ({ default: m.UserManagement })));
@@ -7,8 +7,10 @@ const StudentManagement = lazy(() => import('./StudentManagement').then(m => ({ 
 const StudyPlanManagement = lazy(() => import('./StudyPlanManagement').then(m => ({ default: m.StudyPlanManagement })));
 const GradesManagement = lazy(() => import('./GradesManagement').then(m => ({ default: m.GradesManagement })));
 const Statistics = lazy(() => import('./Statistics').then(m => ({ default: m.Statistics })));
+const StudentDetail = lazy(() => import('./StudentDetail').then(m => ({ default: m.StudentDetail })));
+const ProfileSection = lazy(() => import('./ProfileSection').then(m => ({ default: m.ProfileSection })));
 
-type Section = 'usuarios' | 'estudiantes' | 'plan-estudios' | 'calificaciones' | 'estadisticas';
+type Section = 'usuarios' | 'estudiantes' | 'plan-estudios' | 'calificaciones' | 'estadisticas' | 'detalle-estudiante' | 'perfil';
 
 const allSections: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'usuarios', label: 'Gestión de Usuarios', icon: <Users size={18} /> },
@@ -16,6 +18,8 @@ const allSections: { id: Section; label: string; icon: React.ReactNode }[] = [
   { id: 'plan-estudios', label: 'Plan de Estudios', icon: <BookOpen size={18} /> },
   { id: 'calificaciones', label: 'Gestión de Calificaciones', icon: <BarChart3 size={18} /> },
   { id: 'estadisticas', label: 'Estadísticas', icon: <TrendingUp size={18} /> },
+  { id: 'detalle-estudiante', label: 'Detalle del Estudiante', icon: <Search size={18} /> },
+  { id: 'perfil', label: 'Mi Perfil', icon: <UserCog size={18} /> },
 ];
 
 export const DashboardLayout = () => {
@@ -43,6 +47,10 @@ export const DashboardLayout = () => {
         return <Suspense fallback={fallback}><GradesManagement /></Suspense>;
       case 'estadisticas':
         return <Suspense fallback={fallback}><Statistics /></Suspense>;
+      case 'detalle-estudiante':
+        return <Suspense fallback={fallback}><StudentDetail /></Suspense>;
+      case 'perfil':
+        return <Suspense fallback={fallback}><ProfileSection /></Suspense>;
       default:
         return null;
     }

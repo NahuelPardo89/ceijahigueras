@@ -6,8 +6,9 @@ import { useGrades, type Grade } from '../../hooks/useGrades';
 import { useEquivalences, type Equivalence } from '../../hooks/useEquivalences';
 import { GradesFormModal } from './GradesFormModal';
 import { EquivalenceFormModal } from './EquivalenceFormModal';
-import { GraduationCap, RefreshCw, Search, Plus, BookOpen } from 'lucide-react';
+import { GraduationCap, RefreshCw, Search, Plus, BookOpen, Download } from 'lucide-react';
 import { Pagination } from '../Pagination';
+import { exportToExcel } from '../../hooks/useExport';
 
 type PlanFilter = 'Plan A' | 'Plan B' | 'Plan C' | 'virtuales';
 
@@ -178,6 +179,35 @@ export const GradesManagement = () => {
   const handlePageChange = useCallback((page: number) => setCurrentPage(page), []);
   const handlePageSizeChange = useCallback((size: number) => setPageSize(size), []);
 
+  const handleExport = () => {
+    const rows = filtered.flatMap(s => {
+      const studentGrades = grades.filter(g => g.studentId === s.id);
+      if (studentGrades.length === 0) {
+        return [{ apellido: s.apellido, nombre: s.nombre, dni: s.dni, plan: s.planActual, modulo: '', materia: '', nota: '', fecha: '' }];
+      }
+      return studentGrades.map(g => ({
+        apellido: s.apellido,
+        nombre: s.nombre,
+        dni: s.dni,
+        plan: s.planActual,
+        modulo: `M${getModuloForSubject(g.subjectId)}`,
+        materia: getSubjectName(g.subjectId),
+        nota: g.nota,
+        fecha: g.fecha,
+      }));
+    });
+    exportToExcel(rows, [
+      { header: 'Apellido', accessor: r => r.apellido },
+      { header: 'Nombre', accessor: r => r.nombre },
+      { header: 'DNI', accessor: r => r.dni },
+      { header: 'Plan', accessor: r => r.plan },
+      { header: 'Módulo', accessor: r => r.modulo },
+      { header: 'Materia', accessor: r => r.materia },
+      { header: 'Nota', accessor: r => r.nota },
+      { header: 'Fecha', accessor: r => r.fecha },
+    ], 'calificaciones');
+  };
+
   const getSubjectName = (subjectId: string) => {
     for (const subs of Object.values(subjectsByPlan)) {
       const found = subs.find(s => s.id === subjectId);
@@ -227,6 +257,14 @@ export const GradesManagement = () => {
             title="Recargar"
           >
             <RefreshCw size={15} className={loadingData ? 'spin-icon' : ''} />
+          </button>
+          <button
+            className="btn-icon-round btn-add-user"
+            onClick={handleExport}
+            title="Exportar a Excel"
+            aria-label="Exportar calificaciones a Excel"
+          >
+            <Download size={15} />
           </button>
         </div>
 

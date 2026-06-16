@@ -4,13 +4,15 @@ import { useStudents, type StudentRecord } from '../../hooks/useStudents';
 import { useSubjects, type Subject } from '../../hooks/useSubjects';
 import { useGrades, type Grade } from '../../hooks/useGrades';
 import {
-  GraduationCap, RefreshCw, Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, FileText, ClipboardList
+  GraduationCap, RefreshCw, Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, FileText, ClipboardList, Download, Upload
 } from 'lucide-react';
 import { StudentFormModal } from './StudentFormModal';
 import { StudentDocumentationModal } from './StudentDocumentationModal';
 import { GradesFormModal } from './GradesFormModal';
+import { BulkImportModal } from './BulkImportModal';
 import { Pagination } from '../Pagination';
 import { calcularEdad } from '../../utils/dates';
+import { exportToExcel } from '../../hooks/useExport';
 
 type SortField = keyof StudentRecord | 'edad';
 type SortDir = 'asc' | 'desc';
@@ -43,6 +45,7 @@ export const StudentManagement = () => {
   const [gradeModalSubjects, setGradeModalSubjects] = useState<Subject[]>([]);
   const [showGradeForm, setShowGradeForm] = useState(false);
   const [editGradeData, setEditGradeData] = useState<Grade | null>(null);
+  const [showImport, setShowImport] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -183,6 +186,23 @@ export const StudentManagement = () => {
   const handlePageChange = useCallback((page: number) => setCurrentPage(page), []);
   const handlePageSizeChange = useCallback((size: number) => setPageSize(size), []);
 
+  const handleExport = () => {
+    exportToExcel(filtered, [
+      { header: 'Apellido', accessor: s => s.apellido },
+      { header: 'Nombre', accessor: s => s.nombre },
+      { header: 'DNI', accessor: s => s.dni },
+      { header: 'CUIL', accessor: s => s.cuil },
+      { header: 'Email', accessor: s => s.email },
+      { header: 'Teléfono', accessor: s => s.telefono },
+      { header: 'Edad', accessor: s => calcularEdad(s.fechaNacimiento) },
+      { header: 'Plan Actual', accessor: s => s.planActual },
+      { header: 'Cursado', accessor: s => s.cursado === 'virtual' ? 'Virtual' : 'Presencial' },
+      { header: 'Estado', accessor: s => s.estado === 'activo' ? 'Activo' : 'Inactivo' },
+      { header: 'Gestión', accessor: s => s.gestion },
+      { header: 'Documentación', accessor: s => s.documentacionCompleta === 'completa' ? 'Completa' : 'Incompleta' },
+    ], 'estudiantes');
+  };
+
   const renderSortIcon = (field: SortField) => {
     if (sortField !== field) return null;
     return sortDir === 'asc'
@@ -220,6 +240,24 @@ export const StudentManagement = () => {
             >
               <RefreshCw size={15} className={loadingData ? 'spin-icon' : ''} />
             </button>
+            <button
+              className="btn-icon-round btn-add-user"
+              onClick={handleExport}
+              title="Exportar a Excel"
+              aria-label="Exportar estudiantes a Excel"
+            >
+              <Download size={15} />
+            </button>
+            {isAdmin && (
+              <button
+                className="btn-icon-round btn-add-user"
+                onClick={() => setShowImport(true)}
+                title="Importar estudiantes"
+                aria-label="Importar estudiantes desde archivo"
+              >
+                <Upload size={15} />
+              </button>
+            )}
           </div>
         </div>
 
@@ -516,6 +554,12 @@ export const StudentManagement = () => {
           initialData={editGradeData}
           onClose={() => { setShowGradeForm(false); setEditGradeData(null); }}
           onSuccess={handleGradeFormSuccess}
+        />
+      )}
+
+      {showImport && (
+        <BulkImportModal
+          onClose={() => { setShowImport(false); handleRefresh(); }}
         />
       )}
     </div>
