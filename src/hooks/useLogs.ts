@@ -68,11 +68,12 @@ export const useLogs = () => {
     try {
       const q = query(
         collection(db, 'logs'),
-        where('entity', '==', entity),
         where('entityId', '==', entityId)
       );
       const snap = await getDocs(q);
-      const entries = snap.docs.map(d => ({ id: d.id, ...d.data() } as LogEntry));
+      const entries = snap.docs
+        .map(d => ({ id: d.id, ...d.data() } as LogEntry))
+        .filter(e => e.entity === entity);
       entries.sort((a, b) => (b.timestamp ?? '').localeCompare(a.timestamp ?? ''));
       return entries.slice(0, 50);
     } catch (err) {

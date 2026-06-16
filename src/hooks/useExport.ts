@@ -14,6 +14,11 @@ export function exportToExcel<T>(data: T[], columns: ColumnDef<T>[], filename: s
   ];
 
   const ws = XLSX.utils.aoa_to_sheet(wsData);
+  const colWidths = columns.map((_, i) => {
+    const max = wsData.map(row => String(row[i] ?? '').length);
+    return { wch: Math.min(Math.max(...max) + 2, 40) };
+  });
+  ws['!cols'] = colWidths;
   const wb = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(wb, ws, 'Datos');
   XLSX.writeFile(wb, `${filename}.xlsx`);
