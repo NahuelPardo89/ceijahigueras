@@ -24,9 +24,9 @@ export const DashboardLayout = () => {
 
   const isAdmin = user?.role === 'Administrador';
   const sections = useMemo(() => allSections.filter(s => isAdmin || (s.id !== 'usuarios' && s.id !== 'plan-estudios')), [isAdmin]);
-  const [activeSection, setActiveSection] = useState<Section>('plan-estudios');
+  const [activeSection, setActiveSection] = useState<Section>('calificaciones');
 
-  const currentSection = sections.some(s => s.id === activeSection) ? activeSection : (sections[0]?.id ?? 'plan-estudios');
+  const currentSection = sections.some(s => s.id === activeSection) ? activeSection : (sections[0]?.id ?? 'calificaciones');
 
   if (!user) return null;
 

@@ -1,7 +1,6 @@
 import { useEffect, useState } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudyPlans, type StudyPlan } from '../../hooks/useStudyPlans';
-import { useSubjects } from '../../hooks/useSubjects';
 import { BookOpen, Plus, Pencil, Trash2, RefreshCw, Check, X } from 'lucide-react';
 import { StudyPlanFormModal } from './StudyPlanFormModal';
 import { SubjectManagement } from './SubjectManagement';
@@ -9,8 +8,6 @@ import { SubjectManagement } from './SubjectManagement';
 export const StudyPlanManagement = () => {
   const { user } = useAuth();
   const { getAllPlans, updatePlan, deletePlan } = useStudyPlans();
-  const { createDefaultSubjects } = useSubjects();
-  void createDefaultSubjects;
   const isAdmin = user?.role === 'Administrador';
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [loadingData, setLoadingData] = useState(true);
