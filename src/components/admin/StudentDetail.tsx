@@ -22,28 +22,7 @@ const gestionLabel: Record<string, string> = {
   'sin cargar': 'Sin Cargar', cargado: 'Cargado', 'pase solicitado': 'Pase Solicitado', invalido: 'Inválido',
 };
 
-const FIELD_LABELS: Record<string, string> = {
-  apellido: 'Apellido', nombre: 'Nombre', dni: 'DNI', cuil: 'CUIL',
-  email: 'Email', telefono: 'Teléfono', fechaNacimiento: 'Fecha de Nac.',
-  estado: 'Estado', planInicial: 'Plan Inicial', planActual: 'Plan Actual',
-  cursado: 'Cursado', gestion: 'Gestión',
-  paseProvisorio: 'Pase Provisorio', paseDefinitivo: 'Pase Definitivo',
-  fotocopiaDni: 'Fotocopia DNI', cus: 'CUS',
-  certificadoPrimaria: 'Certificado Primaria', numeroEquivalencia: 'N° Equivalencia',
-  linkTitulo: 'Link Título', documentacionCompleta: 'Documentación',
-  observaciones: 'Observaciones', documentacion: 'Documentación',
-};
 
-const formatChanges = (details: Record<string, unknown> | undefined): string => {
-  if (!details) return '—';
-  return Object.entries(details)
-    .map(([key, val]) => {
-      const label = FIELD_LABELS[key] ?? key;
-      const value = typeof val === 'string' ? val : JSON.stringify(val);
-      return `${label}: ${value}`;
-    })
-    .join(', ');
-};
 
 export const StudentDetail = () => {
   const { getAllStudents } = useStudents();
@@ -370,9 +349,9 @@ export const StudentDetail = () => {
 
                 {activeTab === 'historial' && (
                   <div>
-                    {logs.filter(l => l.action === 'update').length === 0 ? (
+                    {logs.length === 0 ? (
                       <p style={{ textAlign: 'center', color: 'var(--color-text-secondary)', fontSize: '14px', padding: '20px 0' }}>
-                        Sin modificaciones registradas.
+                        Sin cambios registrados.
                       </p>
                     ) : (
                       <div style={{ background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
@@ -381,19 +360,26 @@ export const StudentDetail = () => {
                             <tr style={{ color: 'var(--color-text-muted)', background: 'var(--bg-glass)' }}>
                               <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Fecha</th>
                               <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Usuario</th>
-                              <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Campos modificados</th>
+                              <th style={{ textAlign: 'center', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Acción</th>
+                              <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Detalle</th>
                             </tr>
                           </thead>
                           <tbody>
-                            {logs.filter(l => l.action === 'update').map((log, i) => (
+                            {logs.map((log, i) => (
                               <tr key={log.id ?? i} style={{ borderBottom: '1px solid var(--border-glass)', background: i % 2 === 1 ? 'var(--bg-glass)' : undefined }}>
                                 <td style={{ padding: '8px 10px', whiteSpace: 'nowrap', color: 'var(--color-text-secondary)' }}>
                                   <Calendar size={11} style={{ marginRight: '4px', verticalAlign: 'middle' }} />
                                   {new Date(log.timestamp).toLocaleDateString('es-AR')}
                                 </td>
                                 <td style={{ padding: '8px 10px' }}>{log.userEmail || log.userId}</td>
+                                <td style={{ padding: '8px 10px', textAlign: 'center' }}>
+                                  <span className={`badge-${log.action === 'create' ? 'presencial' : log.action === 'delete' ? 'inactivo' : 'estado'}`}
+                                    style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px' }}>
+                                    {log.action === 'create' ? 'Creación' : log.action === 'update' ? 'Modificación' : 'Eliminación'}
+                                  </span>
+                                </td>
                                 <td style={{ padding: '8px 10px', color: 'var(--color-text-secondary)', fontSize: '12px' }}>
-                                  {formatChanges(log.details)}
+                                  {log.details ? JSON.stringify(log.details).substring(0, 80) : '—'}
                                 </td>
                               </tr>
                             ))}

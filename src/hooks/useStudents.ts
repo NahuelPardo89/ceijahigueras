@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, limit, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, limit, where, getDoc } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './useAuth';
 import { useLogs, logCreate, logUpdate, logDelete } from './useLogs';
@@ -132,8 +132,18 @@ export const useStudents = () => {
     setLoading(true);
     setError(null);
     try {
+      const prevSnap = await getDoc(doc(db, 'students', id));
+      const prevData = prevSnap.data() ?? {};
       await updateDoc(doc(db, 'students', id), data);
-      await createLog(logUpdate('student', id, data));
+      const changed: Record<string, unknown> = {};
+      for (const key of Object.keys(data)) {
+        if (prevData[key] !== data[key as keyof typeof data]) {
+          changed[key] = data[key as keyof typeof data];
+        }
+      }
+      if (Object.keys(changed).length > 0) {
+        await createLog(logUpdate('student', id, changed));
+      }
     } catch (err) {
       console.error('Error al actualizar estudiante:', err);
       setError('Error al actualizar el estudiante.');
