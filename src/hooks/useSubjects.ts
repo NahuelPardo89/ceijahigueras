@@ -1,5 +1,5 @@
 import { useState, useCallback } from 'react';
-import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where } from 'firebase/firestore';
+import { collection, getDocs, addDoc, updateDoc, deleteDoc, doc, query, where, writeBatch } from 'firebase/firestore';
 import { db } from '../firebase/config';
 import { useAuth } from './useAuth';
 import { useLogs, logCreate, logUpdate, logDelete } from './useLogs';
@@ -99,30 +99,35 @@ export const useSubjects = () => {
     setLoading(true);
     setError(null);
     try {
-      const batch: CreateSubjectData[] = [];
+      const batch = writeBatch(db);
+      const batchItems: { nombre: string; modulo: number; tipo: SubjectType }[] = [];
+      const now = new Date().toISOString();
 
       let order = 0;
       for (const modulo of MODULOS_BASICOS) {
         for (const nombre of DEFAULT_SUBJECTS_BASICO) {
-          batch.push({ nombre, modulo, planId, tipo: 'basico', order: order++ });
+          const ref = doc(collection(db, 'subjects'));
+          batch.set(ref, { nombre, modulo, planId, tipo: 'basico', order: order++, createdAt: now });
+          batchItems.push({ nombre, modulo, tipo: 'basico' });
         }
       }
 
       for (const nombre of DEFAULT_SUBJECTS_ATP) {
-        batch.push({ nombre, modulo: MODULO_ATP, planId, tipo: 'atp', order: order++ });
+        const ref = doc(collection(db, 'subjects'));
+        batch.set(ref, { nombre, modulo: MODULO_ATP, planId, tipo: 'atp', order: order++, createdAt: now });
+        batchItems.push({ nombre, modulo: MODULO_ATP, tipo: 'atp' });
       }
 
       for (const nombre of DEFAULT_SUBJECTS_ORIENTACION) {
-        batch.push({ nombre, modulo: MODULO_ORIENTACION, planId, tipo: 'orientacion', order: order++ });
+        const ref = doc(collection(db, 'subjects'));
+        batch.set(ref, { nombre, modulo: MODULO_ORIENTACION, planId, tipo: 'orientacion', order: order++, createdAt: now });
+        batchItems.push({ nombre, modulo: MODULO_ORIENTACION, tipo: 'orientacion' });
       }
 
-      for (const item of batch) {
-        const docRef = await addDoc(collection(db, 'subjects'), {
-          ...item,
-          createdAt: new Date().toISOString(),
-        });
-        await createLog(logCreate('subject', docRef.id, { nombre: item.nombre, modulo: item.modulo, tipo: item.tipo }));
-      }
+      await batch.commit();
+      await Promise.all(batchItems.map(item =>
+        createLog(logCreate('subject', 'batch', { nombre: item.nombre, modulo: item.modulo, tipo: item.tipo }))
+      ));
     } catch (err) {
       console.error('Error al crear materias por defecto:', err);
       setError('Error al crear las materias por defecto.');

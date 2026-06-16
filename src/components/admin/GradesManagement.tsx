@@ -1,4 +1,4 @@
-import { useEffect, useState, useMemo } from 'react';
+import { useEffect, useState, useMemo, useCallback } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudents, type StudentRecord } from '../../hooks/useStudents';
 import { useSubjects, type Subject } from '../../hooks/useSubjects';
@@ -7,6 +7,7 @@ import { useEquivalences, type Equivalence } from '../../hooks/useEquivalences';
 import { GradesFormModal } from './GradesFormModal';
 import { EquivalenceFormModal } from './EquivalenceFormModal';
 import { GraduationCap, RefreshCw, Search, Plus, BookOpen } from 'lucide-react';
+import { Pagination } from '../Pagination';
 
 type PlanFilter = 'Plan A' | 'Plan B' | 'Plan C' | 'virtuales';
 
@@ -38,6 +39,8 @@ export const GradesManagement = () => {
   const [equivalences, setEquivalences] = useState<Equivalence[]>([]);
   const [showEqModal, setShowEqModal] = useState(false);
   const [editEquivalence, setEditEquivalence] = useState<Equivalence | null>(null);
+  const [currentPage, setCurrentPage] = useState(1);
+  const [pageSize, setPageSize] = useState(25);
 
   useEffect(() => {
     let cancelled = false;
@@ -97,10 +100,9 @@ export const GradesManagement = () => {
       .then(s => {
         setStudents(s);
         const planIds = [...new Set(s.map(st => st.planId).filter(Boolean) as string[])];
-        return Promise.allSettled(planIds.map(id => getSubjectsByPlan(id)));
+        return Promise.allSettled(planIds.map(id => getSubjectsByPlan(id))).then(results => ({ results, planIds }));
       })
-      .then(results => {
-        const planIds = [...new Set(students.map(st => st.planId).filter(Boolean) as string[])];
+      .then(({ results, planIds }) => {
         const map: Record<string, Subject[]> = {};
         planIds.forEach((id, i) => {
           if (results[i].status === 'fulfilled') {
@@ -163,6 +165,18 @@ export const GradesManagement = () => {
       s.dni.includes(q)
     );
   }, [activeStudents, filter, search]);
+
+  useEffect(() => {
+    setCurrentPage(1);
+  }, [search, filter, pageSize]);
+
+  const paginated = useMemo(() => {
+    const start = (currentPage - 1) * pageSize;
+    return filtered.slice(start, start + pageSize);
+  }, [filtered, currentPage, pageSize]);
+
+  const handlePageChange = useCallback((page: number) => setCurrentPage(page), []);
+  const handlePageSizeChange = useCallback((size: number) => setPageSize(size), []);
 
   const getSubjectName = (subjectId: string) => {
     for (const subs of Object.values(subjectsByPlan)) {
@@ -259,7 +273,7 @@ export const GradesManagement = () => {
           </p>
         ) : (
           <div className="user-list">
-            {filtered.map(s => (
+            {paginated.map(s => (
               <div key={s.id}>
                 <div
                   className="user-row"
@@ -442,6 +456,16 @@ export const GradesManagement = () => {
               </div>
             ))}
           </div>
+        )}
+
+        {!loadingData && filtered.length > 0 && (
+          <Pagination
+            currentPage={currentPage}
+            totalItems={filtered.length}
+            pageSize={pageSize}
+            onPageChange={handlePageChange}
+            onPageSizeChange={handlePageSizeChange}
+          />
         )}
       </div>
 

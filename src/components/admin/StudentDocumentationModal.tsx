@@ -4,21 +4,13 @@ import { useStudents, type StudentRecord, type CertificadoPrimaria, type DocComp
 import { X, FileText } from 'lucide-react';
 import { getFirebaseErrorMessage } from '../../utils/errors';
 import { useToast } from '../../context/ToastContext';
+import { calcularEdad } from '../../utils/dates';
 
 interface Props {
   student: StudentRecord;
   onClose: () => void;
   onSuccess: () => void;
 }
-
-const calcularEdad = (f: string): number => {
-  const hoy = new Date();
-  const nac = new Date(f);
-  let edad = hoy.getFullYear() - nac.getFullYear();
-  const m = hoy.getMonth() - nac.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) edad--;
-  return edad;
-};
 
 export const StudentDocumentationModal = ({ student, onClose, onSuccess }: Props) => {
   const { toast } = useToast();

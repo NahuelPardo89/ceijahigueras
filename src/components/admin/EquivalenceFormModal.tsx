@@ -4,17 +4,8 @@ import type { StudentRecord } from '../../hooks/useStudents';
 import { X, AlertCircle } from 'lucide-react';
 import { getFirebaseErrorMessage } from '../../utils/errors';
 import { useToast } from '../../context/ToastContext';
-
-const NOTA_OPTIONS = [
-  '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Aprobado',
-];
-
-const parseDateToDMY = (date: Date): string => {
-  const d = String(date.getDate()).padStart(2, '0');
-  const m = String(date.getMonth() + 1).padStart(2, '0');
-  const y = date.getFullYear();
-  return `${d}/${m}/${y}`;
-};
+import { NOTA_OPTIONS } from '../../utils/constants';
+import { parseDateToDMY } from '../../utils/dates';
 
 interface EquivalenceFormModalProps {
   student: StudentRecord;

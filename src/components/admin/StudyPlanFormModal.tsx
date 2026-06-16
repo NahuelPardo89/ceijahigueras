@@ -61,8 +61,12 @@ export const StudyPlanFormModal = ({ mode, initialData, onClose, onSuccess }: St
         toast('Plan de estudio actualizado exitosamente');
       } else {
         const planId = await createPlan(form);
-        await createDefaultSubjects(planId);
-        toast('Plan de estudio creado exitosamente con las materias por defecto');
+        try {
+          await createDefaultSubjects(planId);
+          toast('Plan de estudio creado exitosamente con las materias por defecto');
+        } catch {
+          toast('Plan creado, pero hubo un error al crear las materias por defecto.', 'error');
+        }
       }
       onSuccess();
     } catch (err) {

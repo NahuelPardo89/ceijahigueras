@@ -10,20 +10,10 @@ import { StudentFormModal } from './StudentFormModal';
 import { StudentDocumentationModal } from './StudentDocumentationModal';
 import { GradesFormModal } from './GradesFormModal';
 import { Pagination } from '../Pagination';
+import { calcularEdad } from '../../utils/dates';
 
 type SortField = keyof StudentRecord | 'edad';
 type SortDir = 'asc' | 'desc';
-
-const calcularEdad = (fechaNacimiento: string): number => {
-  const hoy = new Date();
-  const nac = new Date(fechaNacimiento);
-  let edad = hoy.getFullYear() - nac.getFullYear();
-  const m = hoy.getMonth() - nac.getMonth();
-  if (m < 0 || (m === 0 && hoy.getDate() < nac.getDate())) {
-    edad--;
-  }
-  return edad;
-};
 
 const gestionLabel: Record<string, string> = {
   'sin cargar': 'Sin Cargar',

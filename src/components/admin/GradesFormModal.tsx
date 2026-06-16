@@ -1,14 +1,12 @@
 import { useState, useMemo, useEffect, type FormEvent } from 'react';
-import { useGrades, isValidFecha, parseDateToDMY, type Grade, type CreateGradeData } from '../../hooks/useGrades';
+import { useGrades, isValidFecha, type Grade, type CreateGradeData } from '../../hooks/useGrades';
+import { parseDateToDMY } from '../../utils/dates';
 import type { Subject } from '../../hooks/useSubjects';
 import type { StudentRecord } from '../../hooks/useStudents';
 import { X, AlertCircle } from 'lucide-react';
 import { getFirebaseErrorMessage } from '../../utils/errors';
 import { useToast } from '../../context/ToastContext';
-
-const NOTA_OPTIONS = [
-  '1', '2', '3', '4', '5', '6', '7', '8', '9', '10', 'Aprobado',
-];
+import { NOTA_OPTIONS } from '../../utils/constants';
 
 interface GradesFormModalProps {
   student: StudentRecord;

@@ -33,19 +33,30 @@ const BORDER_COLORS: Record<ToastType, string> = {
   info: 'var(--accent-primary)',
 };
 
+const DISMISS_MS = 3500;
+
 export const ToastProvider = ({ children }: { children: ReactNode }) => {
   const [toasts, setToasts] = useState<Toast[]>([]);
   const idRef = useRef(0);
+  const timersRef = useRef<Map<number, ReturnType<typeof setTimeout>>>(new Map());
 
   const removeToast = useCallback((id: number) => {
+    timersRef.current.delete(id);
     setToasts(prev => prev.filter(t => t.id !== id));
   }, []);
+
+  const scheduleDismiss = useCallback((id: number) => {
+    const existing = timersRef.current.get(id);
+    if (existing) clearTimeout(existing);
+    const timer = setTimeout(() => removeToast(id), DISMISS_MS);
+    timersRef.current.set(id, timer);
+  }, [removeToast]);
 
   const toast = useCallback((message: string, type: ToastType = 'success') => {
     const id = ++idRef.current;
     setToasts(prev => [...prev, { id, type, message }]);
-    setTimeout(() => removeToast(id), 3500);
-  }, [removeToast]);
+    scheduleDismiss(id);
+  }, [scheduleDismiss]);
 
   return (
     <ToastContext.Provider value={{ toast }}>
@@ -65,6 +76,11 @@ export const ToastProvider = ({ children }: { children: ReactNode }) => {
           <div
             key={t.id}
             className="toast-enter"
+            onMouseEnter={() => {
+              const existing = timersRef.current.get(t.id);
+              if (existing) clearTimeout(existing);
+            }}
+            onMouseLeave={() => scheduleDismiss(t.id)}
             style={{
               display: 'flex',
               alignItems: 'center',
