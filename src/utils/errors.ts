@@ -1,4 +1,4 @@
-type ErrorContext = 'signIn' | 'signUp' | 'resetPassword' | 'signInWithGoogle' | 'generic';
+type ErrorContext = 'signIn' | 'signUp' | 'resetPassword' | 'signInWithGoogle' | 'changePassword' | 'generic';
 
 function getErrorCode(err: unknown): string | null {
   if (err && typeof err === 'object' && 'code' in err) {
@@ -18,6 +18,7 @@ const errorMap: Record<string, Partial<Record<ErrorContext, string>>> = {
   },
   'auth/wrong-password': {
     signIn: 'Credenciales incorrectas. Verifica tu correo y contraseña.',
+    changePassword: 'La contraseña actual ingresada es incorrecta.',
   },
   'auth/invalid-credential': {
     signIn: 'Credenciales incorrectas. Verifica tu correo y contraseña.',
@@ -35,6 +36,10 @@ const errorMap: Record<string, Partial<Record<ErrorContext, string>>> = {
   },
   'auth/weak-password': {
     signUp: 'La contraseña es muy débil. Debe tener al menos 6 caracteres.',
+    changePassword: 'La nueva contraseña es muy débil. Debe tener al menos 6 caracteres.',
+  },
+  'auth/requires-recent-login': {
+    changePassword: 'Tu sesión expiró. Vuelve a iniciar sesión e intenta de nuevo.',
   },
   'auth/popup-closed-by-user': {
     signInWithGoogle: 'El inicio de sesión fue cancelado al cerrar la ventana emergente.',
@@ -52,6 +57,7 @@ const fallbackMessages: Record<ErrorContext, string> = {
   signUp: 'Ocurrió un error inesperado al registrar el usuario.',
   resetPassword: 'Error al intentar enviar el correo de recuperación.',
   signInWithGoogle: 'Ocurrió un error al iniciar sesión con Google.',
+  changePassword: 'Ocurrió un error al cambiar la contraseña.',
   generic: 'Ocurrió un error inesperado.',
 };
 

@@ -337,8 +337,8 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       await reauthenticateWithCredential(auth.currentUser, credential);
       await fbUpdatePassword(auth.currentUser, newPassword);
     } catch (err) {
-      console.error(err);
-      setError(getFirebaseErrorMessage(err, 'generic'));
+      console.error('Error al cambiar contraseña:', err);
+      setError(getFirebaseErrorMessage(err, 'changePassword'));
       throw err;
     } finally {
       setLoading(false);

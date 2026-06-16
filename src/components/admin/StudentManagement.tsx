@@ -194,12 +194,23 @@ export const StudentManagement = () => {
       { header: 'CUIL', accessor: s => s.cuil },
       { header: 'Email', accessor: s => s.email },
       { header: 'Teléfono', accessor: s => s.telefono },
+      { header: 'Fecha de Nacimiento', accessor: s => s.fechaNacimiento },
       { header: 'Edad', accessor: s => calcularEdad(s.fechaNacimiento) },
+      { header: 'Plan Inicial', accessor: s => s.planInicial },
       { header: 'Plan Actual', accessor: s => s.planActual },
       { header: 'Cursado', accessor: s => s.cursado === 'virtual' ? 'Virtual' : 'Presencial' },
       { header: 'Estado', accessor: s => s.estado === 'activo' ? 'Activo' : 'Inactivo' },
       { header: 'Gestión', accessor: s => s.gestion },
+      { header: 'Pase Provisorio', accessor: s => s.paseProvisorio ? 'Sí' : 'No' },
+      { header: 'Pase Definitivo', accessor: s => s.paseDefinitivo ? 'Sí' : 'No' },
+      { header: 'Fotocopia DNI', accessor: s => s.fotocopiaDni ? 'Sí' : 'No' },
+      { header: 'CUS', accessor: s => s.cus ? 'Sí' : 'No' },
+      { header: 'Certificado Primaria', accessor: s => s.certificadoPrimaria },
+      { header: 'Número Equivalencia', accessor: s => s.numeroEquivalencia },
+      { header: 'Link Título', accessor: s => s.linkTitulo },
+      { header: 'Observaciones', accessor: s => s.observaciones },
       { header: 'Documentación', accessor: s => s.documentacionCompleta === 'completa' ? 'Completa' : 'Incompleta' },
+      { header: 'Creado', accessor: s => s.createdAt },
     ], 'estudiantes');
   };
 

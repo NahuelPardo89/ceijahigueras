@@ -69,12 +69,12 @@ export const useLogs = () => {
       const q = query(
         collection(db, 'logs'),
         where('entity', '==', entity),
-        where('entityId', '==', entityId),
-        orderBy('timestamp', 'desc'),
-        limit(50)
+        where('entityId', '==', entityId)
       );
       const snap = await getDocs(q);
-      return snap.docs.map(d => ({ id: d.id, ...d.data() } as LogEntry));
+      const entries = snap.docs.map(d => ({ id: d.id, ...d.data() } as LogEntry));
+      entries.sort((a, b) => (b.timestamp ?? '').localeCompare(a.timestamp ?? ''));
+      return entries.slice(0, 50);
     } catch (err) {
       console.error('Error cargando logs:', err);
       setError('No se pudieron cargar los logs.');

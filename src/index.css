@@ -1851,16 +1851,19 @@ button.text-link {
 }
 
 @media print {
+  body { background: white !important; }
   body * { visibility: hidden; }
   .print-report, .print-report * { visibility: visible; }
-  .print-report { position: absolute; left: 0; top: 0; width: 100%; background: white; color: black; }
+  .print-report { position: static !important; width: 100%; background: white; color: black; padding: 20px 0 !important; }
   .print-report .report-header h1 { color: #000 !important; }
   .print-report .report-header h2 { color: #000 !important; }
   .print-report .report-header p { color: #333 !important; }
   .print-report .stat-table td, .print-report .stat-table th { border-color: #ccc !important; color: #000 !important; }
   .print-report .stat-table tr { background: transparent !important; }
-  .modal-overlay { background: none !important; }
+  .modal-overlay { position: static !important; background: none !important; height: auto !important; }
+  .modal-card { max-width: 100% !important; box-shadow: none !important; position: static !important; border: none !important; background: white !important; }
+  .modal-header { display: none !important; }
   .modal-actions { display: none !important; }
   .modal-close { display: none !important; }
-  .modal-header { border-bottom: 1px solid #ccc !important; }
+  @page { margin: 10mm; }
 }
