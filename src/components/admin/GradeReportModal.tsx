@@ -16,26 +16,29 @@ interface Props {
 }
 
 export const GradeReportModal = ({ student, subjects, grades, equivalences, onClose }: Props) => {
-  const getSubjectName = (subjectId: string) => {
-    const found = subjects.find(s => s.id === subjectId);
-    return found?.nombre ?? '—';
-  };
-
-  const getModuloForSubject = (subjectId: string) => {
-    const found = subjects.find(s => s.id === subjectId);
-    return found?.modulo ?? 0;
-  };
-
-  const groupedGrades = useMemo(() => {
-    const groups: Record<number, Grade[]> = {};
+  const subjectsByModulo = useMemo(() => {
+    const bestGrade: Record<string, Grade> = {};
     for (const g of grades) {
-      const mod = getModuloForSubject(g.subjectId);
-      if (!groups[mod]) groups[mod] = [];
-      groups[mod].push(g);
+      const existing = bestGrade[g.subjectId];
+      if (!existing) {
+        bestGrade[g.subjectId] = g;
+      } else {
+        const gNum = Number(g.nota);
+        const eNum = Number(existing.nota);
+        if (!isNaN(gNum) && (isNaN(eNum) || gNum > eNum)) {
+          bestGrade[g.subjectId] = g;
+        }
+      }
+    }
+
+    const groups: Record<number, { subject: Subject; grade: Grade | null }[]> = {};
+    const sorted = [...subjects].sort((a, b) => a.modulo - b.modulo || a.order - b.order);
+    for (const s of sorted) {
+      if (!groups[s.modulo]) groups[s.modulo] = [];
+      groups[s.modulo].push({ subject: s, grade: bestGrade[s.id] || null });
     }
     return groups;
-  // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [grades]);
+  }, [subjects, grades]);
 
   return (
     <div className="modal-overlay" onClick={onClose}>
@@ -76,43 +79,41 @@ export const GradeReportModal = ({ student, subjects, grades, equivalences, onCl
             </table>
           </div>
 
-          {Object.keys(groupedGrades).length > 0 ? (
-            <div style={{ marginBottom: '24px' }}>
-              <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--accent-primary)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '1px' }}>
-                Calificaciones
-              </h3>
-              <div style={{ background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
-                <table className="stat-table" style={{ width: '100%', fontSize: '13px' }}>
-                  <thead>
-                    <tr style={{ color: 'var(--color-text-muted)', background: 'var(--bg-glass)' }}>
-                      <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Módulo</th>
-                      <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Materia</th>
-                      <th style={{ textAlign: 'center', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Nota</th>
-                      <th style={{ textAlign: 'center', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Fecha</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-                    {Object.entries(groupedGrades)
-                      .sort(([a], [b]) => Number(a) - Number(b))
-                      .flatMap(([mod, modGrades]) =>
-                        modGrades.map((g, i) => (
-                          <tr key={g.id} style={{ borderBottom: '1px solid var(--border-glass)', background: i % 2 === 1 ? 'var(--bg-glass)' : undefined }}>
-                            <td style={{ padding: '8px 10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>M{mod}</td>
-                            <td style={{ padding: '8px 10px' }}>{getSubjectName(g.subjectId)}</td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600 }}>{g.nota}</td>
-                            <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>{g.fecha}</td>
-                          </tr>
-                        ))
-                      )}
-                  </tbody>
-                </table>
-              </div>
+          <div style={{ marginBottom: '24px' }}>
+            <h3 style={{ fontSize: '14px', fontWeight: 600, color: 'var(--accent-primary)', margin: '0 0 8px', textTransform: 'uppercase', letterSpacing: '1px' }}>
+              Calificaciones
+            </h3>
+            <div style={{ background: 'var(--bg-card)', borderRadius: '8px', border: '1px solid var(--border-glass)', overflow: 'hidden' }}>
+              <table className="stat-table" style={{ width: '100%', fontSize: '13px' }}>
+                <thead>
+                  <tr style={{ color: 'var(--color-text-muted)', background: 'var(--bg-glass)' }}>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Módulo</th>
+                    <th style={{ textAlign: 'left', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Materia</th>
+                    <th style={{ textAlign: 'center', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Nota</th>
+                    <th style={{ textAlign: 'center', padding: '8px 10px', borderBottom: '1px solid var(--border-glass)' }}>Fecha</th>
+                  </tr>
+                </thead>
+                <tbody>
+                  {Object.entries(subjectsByModulo)
+                    .sort(([a], [b]) => Number(a) - Number(b))
+                    .flatMap(([mod, items]) =>
+                      items.map(({ subject, grade }) => (
+                        <tr key={subject.id} style={{ borderBottom: '1px solid var(--border-glass)' }}>
+                          <td style={{ padding: '8px 10px', color: 'var(--color-text-secondary)', fontWeight: 500 }}>M{mod}</td>
+                          <td style={{ padding: '8px 10px' }}>{subject.nombre}</td>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', fontWeight: 600, color: grade ? undefined : 'var(--color-danger)' }}>
+                            {grade ? grade.nota : 'Adeuda'}
+                          </td>
+                          <td style={{ padding: '8px 10px', textAlign: 'center', color: 'var(--color-text-secondary)' }}>
+                            {grade ? grade.fecha : '—'}
+                          </td>
+                        </tr>
+                      ))
+                    )}
+                </tbody>
+              </table>
             </div>
-          ) : (
-            <p style={{ fontSize: '13px', color: 'var(--color-text-secondary)', textAlign: 'center', padding: '12px', marginBottom: '24px' }}>
-              Sin calificaciones registradas.
-            </p>
-          )}
+          </div>
 
           {equivalences.length > 0 && (
             <div style={{ marginBottom: '24px' }}>
