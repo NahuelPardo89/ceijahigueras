@@ -4,7 +4,7 @@ import { useStudents, type StudentRecord } from '../../hooks/useStudents';
 import { useSubjects, type Subject } from '../../hooks/useSubjects';
 import { useGrades, type Grade } from '../../hooks/useGrades';
 import {
-  GraduationCap, RefreshCw, Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, FileText, ClipboardList, Download, Upload
+  GraduationCap, RefreshCw, Plus, Pencil, Trash2, Search, ArrowUp, ArrowDown, FileText, ClipboardList, Download, Upload, MessageCircle
 } from 'lucide-react';
 import { StudentFormModal } from './StudentFormModal';
 import { StudentDocumentationModal } from './StudentDocumentationModal';
@@ -373,6 +373,19 @@ export const StudentManagement = () => {
                   >
                     <FileText size={13} />
                   </button>
+                  {s.telefono && (
+                    <a
+                      href={`https://wa.me/549${s.telefono.replace(/[^0-9]/g, '')}`}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="btn-icon-round"
+                      title="WhatsApp"
+                      style={{ color: '#25D366' }}
+                      aria-label={`WhatsApp ${s.apellido}, ${s.nombre}`}
+                    >
+                      <MessageCircle size={13} />
+                    </a>
+                  )}
                   {isAdmin ? (
                     <>
                       <button
