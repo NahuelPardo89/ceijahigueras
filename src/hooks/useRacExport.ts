@@ -30,7 +30,7 @@ export function exportRac(
         ...sortedSubjects.map(subject => {
           const subjectGrades = grades
             .filter(g => g.subjectId === subject.id && g.nota)
-            .map(g => g.nota);
+            .map(g => g.fecha ? `${g.nota} (${g.fecha})` : g.nota);
           return subjectGrades.length > 0 ? subjectGrades.join(', ') : '';
         }),
       ];
@@ -41,7 +41,7 @@ export function exportRac(
 
     const colWidths = headers.map((_, i) => {
       const max = wsData.map(row => String(row[i] ?? '').length);
-      return { wch: Math.min(Math.max(...max) + 2, 40) };
+      return { wch: Math.min(Math.max(...max) + 2, 55) };
     });
     ws['!cols'] = colWidths;
 
