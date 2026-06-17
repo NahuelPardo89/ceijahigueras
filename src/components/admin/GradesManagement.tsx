@@ -6,9 +6,8 @@ import { useGrades, type Grade } from '../../hooks/useGrades';
 import { useEquivalences, type Equivalence } from '../../hooks/useEquivalences';
 import { GradesFormModal } from './GradesFormModal';
 import { EquivalenceFormModal } from './EquivalenceFormModal';
-import { GraduationCap, RefreshCw, Search, Plus, BookOpen, Download, FileSpreadsheet } from 'lucide-react';
+import { GraduationCap, RefreshCw, Search, Plus, BookOpen, FileSpreadsheet } from 'lucide-react';
 import { Pagination } from '../Pagination';
-import { exportToExcel } from '../../hooks/useExport';
 import { exportRac } from '../../hooks/useRacExport';
 
 type PlanFilter = 'Plan A' | 'Plan B' | 'Plan C' | 'virtuales';
@@ -181,35 +180,6 @@ export const GradesManagement = () => {
   const handlePageChange = useCallback((page: number) => setCurrentPage(page), []);
   const handlePageSizeChange = useCallback((size: number) => setPageSize(size), []);
 
-  const handleExport = () => {
-    const rows = filtered.flatMap(s => {
-      const studentGrades = grades.filter(g => g.studentId === s.id);
-      if (studentGrades.length === 0) {
-        return [{ apellido: s.apellido, nombre: s.nombre, dni: s.dni, plan: s.planActual, modulo: '', materia: '', nota: '', fecha: '' }];
-      }
-      return studentGrades.map(g => ({
-        apellido: s.apellido,
-        nombre: s.nombre,
-        dni: s.dni,
-        plan: s.planActual,
-        modulo: `M${getModuloForSubject(g.subjectId)}`,
-        materia: getSubjectName(g.subjectId),
-        nota: g.nota,
-        fecha: g.fecha,
-      }));
-    });
-    exportToExcel(rows, [
-      { header: 'Apellido', accessor: r => r.apellido },
-      { header: 'Nombre', accessor: r => r.nombre },
-      { header: 'DNI', accessor: r => r.dni },
-      { header: 'Plan', accessor: r => r.plan },
-      { header: 'Módulo', accessor: r => r.modulo },
-      { header: 'Materia', accessor: r => r.materia },
-      { header: 'Nota', accessor: r => r.nota },
-      { header: 'Fecha', accessor: r => r.fecha },
-    ], 'calificaciones');
-  };
-
   const handleExportRac = async () => {
     if (exportingRac) return;
     setExportingRac(true);
@@ -301,32 +271,26 @@ export const GradesManagement = () => {
             <GraduationCap size={20} style={{ color: 'var(--accent-primary)' }} />
             <span style={{ fontWeight: 600, fontSize: '15px' }}>Calificaciones</span>
           </div>
-          <button
-            className="btn-icon-round"
-            onClick={handleRefresh}
-            disabled={loadingData}
-            title="Recargar"
-          >
-            <RefreshCw size={15} className={loadingData ? 'spin-icon' : ''} />
-          </button>
-          <button
-            className="btn-icon-round btn-add-user"
-            onClick={handleExport}
-            title="Exportar calificaciones a Excel"
-            aria-label="Exportar calificaciones a Excel"
-          >
-            <Download size={15} />
-          </button>
-          <button
-            className="btn-icon-round btn-add-user"
-            onClick={handleExportRac}
-            disabled={exportingRac}
-            title="Exportar RAC (Registro de Avance Curricular)"
-            aria-label="Exportar RAC"
-            style={exportingRac ? { opacity: 0.5 } : undefined}
-          >
-            <FileSpreadsheet size={15} />
-          </button>
+          <div style={{ display: 'flex', gap: '6px', alignItems: 'center' }}>
+            <button
+              className="btn-icon-round"
+              onClick={handleRefresh}
+              disabled={loadingData}
+              title="Recargar"
+            >
+              <RefreshCw size={15} className={loadingData ? 'spin-icon' : ''} />
+            </button>
+            <button
+              className="btn-icon-round btn-add-user"
+              onClick={handleExportRac}
+              disabled={exportingRac}
+              title="Exportar RAC (Registro de Avance Curricular)"
+              aria-label="Exportar RAC"
+              style={exportingRac ? { opacity: 0.5 } : undefined}
+            >
+              <FileSpreadsheet size={15} />
+            </button>
+          </div>
         </div>
 
         <div style={{ display: 'flex', gap: '10px', marginBottom: '16px', flexWrap: 'wrap' }}>
