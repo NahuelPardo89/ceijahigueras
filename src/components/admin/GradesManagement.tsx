@@ -6,9 +6,10 @@ import { useGrades, type Grade } from '../../hooks/useGrades';
 import { useEquivalences, type Equivalence } from '../../hooks/useEquivalences';
 import { GradesFormModal } from './GradesFormModal';
 import { EquivalenceFormModal } from './EquivalenceFormModal';
-import { GraduationCap, RefreshCw, Search, Plus, BookOpen, Download } from 'lucide-react';
+import { GraduationCap, RefreshCw, Search, Plus, BookOpen, Download, FileSpreadsheet } from 'lucide-react';
 import { Pagination } from '../Pagination';
 import { exportToExcel } from '../../hooks/useExport';
+import { exportRac } from '../../hooks/useRacExport';
 
 type PlanFilter = 'Plan A' | 'Plan B' | 'Plan C' | 'virtuales';
 
@@ -42,6 +43,7 @@ export const GradesManagement = () => {
   const [editEquivalence, setEditEquivalence] = useState<Equivalence | null>(null);
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
+  const [exportingRac, setExportingRac] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -208,6 +210,55 @@ export const GradesManagement = () => {
     ], 'calificaciones');
   };
 
+  const handleExportRac = async () => {
+    if (exportingRac) return;
+    setExportingRac(true);
+    try {
+      const active = students.filter(s => s.estado === 'activo');
+      if (active.length === 0) return;
+
+      const planIds = [...new Set(active.map(s => s.planId).filter(Boolean) as string[])];
+      const subsByPlan: Record<string, Subject[]> = {};
+      await Promise.all(planIds.map(async pid => {
+        subsByPlan[pid] = await getSubjectsByPlan(pid);
+      }));
+
+      const gradesByStudent = new Map<string, Grade[]>();
+      await Promise.all(active.map(async s => {
+        const gs = await getGradesByStudent(s.id);
+        if (gs.length > 0) gradesByStudent.set(s.id, gs);
+      }));
+
+      const groups = [
+        { name: 'Plan A', students: active.filter(s => s.planActual === 'Plan A' && s.cursado === 'presencial') },
+        { name: 'Plan B', students: active.filter(s => s.planActual === 'Plan B' && s.cursado === 'presencial') },
+        { name: 'Plan C', students: active.filter(s => s.planActual === 'Plan C' && s.cursado === 'presencial') },
+        { name: 'Virtuales', students: active.filter(s => s.cursado === 'virtual') },
+      ];
+
+      const sheets = groups.map(({ name, students }) => {
+        const groupPlanIds = [...new Set(students.map(s => s.planId).filter(Boolean) as string[])];
+        const seen = new Set<string>();
+        const subjects: Subject[] = [];
+        for (const pid of groupPlanIds) {
+          for (const sub of subsByPlan[pid] ?? []) {
+            if (!seen.has(sub.id)) {
+              seen.add(sub.id);
+              subjects.push(sub);
+            }
+          }
+        }
+        return { name, students, subjects, gradesByStudent };
+      });
+
+      exportRac(sheets, new Date().getFullYear());
+    } catch (err) {
+      console.error('Error exporting RAC:', err);
+    } finally {
+      setExportingRac(false);
+    }
+  };
+
   const getSubjectName = (subjectId: string) => {
     for (const subs of Object.values(subjectsByPlan)) {
       const found = subs.find(s => s.id === subjectId);
@@ -261,10 +312,20 @@ export const GradesManagement = () => {
           <button
             className="btn-icon-round btn-add-user"
             onClick={handleExport}
-            title="Exportar a Excel"
+            title="Exportar calificaciones a Excel"
             aria-label="Exportar calificaciones a Excel"
           >
             <Download size={15} />
+          </button>
+          <button
+            className="btn-icon-round btn-add-user"
+            onClick={handleExportRac}
+            disabled={exportingRac}
+            title="Exportar RAC (Registro de Avance Curricular)"
+            aria-label="Exportar RAC"
+            style={exportingRac ? { opacity: 0.5 } : undefined}
+          >
+            <FileSpreadsheet size={15} />
           </button>
         </div>
 

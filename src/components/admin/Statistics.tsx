@@ -1,10 +1,7 @@
 import { useEffect, useState, useMemo } from 'react';
 import { useStudents, type StudentRecord } from '../../hooks/useStudents';
-import { useSubjects, type Subject } from '../../hooks/useSubjects';
-import { useGrades, type Grade } from '../../hooks/useGrades';
-import { BarChart3, Users, GraduationCap, Monitor, Download, FileSpreadsheet } from 'lucide-react';
+import { BarChart3, Users, GraduationCap, Monitor, Download } from 'lucide-react';
 import { exportToExcel } from '../../hooks/useExport';
-import { exportRac } from '../../hooks/useRacExport';
 
 const AGE_RANGES = [
   '15', '16', '17', '18', '19', '20', '21', '22', '23', '24',
@@ -39,11 +36,8 @@ const getAgeRange = (age: number): string => {
 
 export const Statistics = () => {
   const { getAllStudents } = useStudents();
-  const { getSubjectsByPlan } = useSubjects();
-  const { getGradesByStudent } = useGrades();
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [loading, setLoading] = useState(true);
-  const [exportingRac, setExportingRac] = useState(false);
 
   useEffect(() => {
     let cancelled = false;
@@ -123,56 +117,6 @@ export const Statistics = () => {
     ], 'estadisticas-edad-plan');
   };
 
-  const handleExportRac = async () => {
-    if (exportingRac) return;
-    setExportingRac(true);
-    try {
-      const allStudents = await getAllStudents();
-      const activeStudents = allStudents.filter(s => s.estado === 'activo');
-      if (activeStudents.length === 0) return;
-
-      const planIds = [...new Set(activeStudents.map(s => s.planId).filter(Boolean) as string[])];
-      const subjectsByPlan: Record<string, Subject[]> = {};
-      await Promise.all(planIds.map(async pid => {
-        subjectsByPlan[pid] = await getSubjectsByPlan(pid);
-      }));
-
-      const gradesByStudent = new Map<string, Grade[]>();
-      await Promise.all(activeStudents.map(async s => {
-        const gs = await getGradesByStudent(s.id);
-        if (gs.length > 0) gradesByStudent.set(s.id, gs);
-      }));
-
-      const groups = [
-        { name: 'Plan A', students: activeStudents.filter(s => s.planActual === 'Plan A' && s.cursado === 'presencial') },
-        { name: 'Plan B', students: activeStudents.filter(s => s.planActual === 'Plan B' && s.cursado === 'presencial') },
-        { name: 'Plan C', students: activeStudents.filter(s => s.planActual === 'Plan C' && s.cursado === 'presencial') },
-        { name: 'Virtuales', students: activeStudents.filter(s => s.cursado === 'virtual') },
-      ];
-
-      const sheets = groups.map(({ name, students }) => {
-        const groupPlanIds = [...new Set(students.map(s => s.planId).filter(Boolean) as string[])];
-        const seen = new Set<string>();
-        const subjects: Subject[] = [];
-        for (const pid of groupPlanIds) {
-          for (const sub of subjectsByPlan[pid] ?? []) {
-            if (!seen.has(sub.id)) {
-              seen.add(sub.id);
-              subjects.push(sub);
-            }
-          }
-        }
-        return { name, students, subjects, gradesByStudent };
-      });
-
-      exportRac(sheets, new Date().getFullYear());
-    } catch (err) {
-      console.error('Error exporting RAC:', err);
-    } finally {
-      setExportingRac(false);
-    }
-  };
-
   if (loading) {
     return (
       <div className="user-mgmt-panel">
@@ -191,26 +135,14 @@ export const Statistics = () => {
           <BarChart3 size={20} style={{ color: 'var(--accent-primary)' }} />
           <span style={{ fontWeight: 600, fontSize: '15px' }}>Estadísticas</span>
         </div>
-        <div style={{ display: 'flex', gap: '6px' }}>
-          <button
-            className="btn-icon-round btn-add-user"
-            onClick={handleExport}
-            title="Exportar estadísticas a Excel"
-            aria-label="Exportar estadísticas a Excel"
-          >
-            <Download size={15} />
-          </button>
-          <button
-            className="btn-icon-round btn-add-user"
-            onClick={handleExportRac}
-            disabled={exportingRac}
-            title="Exportar RAC (Registro de Avance Curricular)"
-            aria-label="Exportar RAC"
-            style={exportingRac ? { opacity: 0.5 } : undefined}
-          >
-            <FileSpreadsheet size={15} />
-          </button>
-        </div>
+        <button
+          className="btn-icon-round btn-add-user"
+          onClick={handleExport}
+          title="Exportar a Excel"
+          aria-label="Exportar estadísticas a Excel"
+        >
+          <Download size={15} />
+        </button>
       </div>
 
       <div style={{ display: 'flex', gap: '16px', marginBottom: '24px', flexWrap: 'wrap' }}>
