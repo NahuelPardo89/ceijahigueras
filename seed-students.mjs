@@ -1,11 +1,35 @@
 // Seed script: delete all students and create 20 new ones
 // Usage: node seed-students.mjs
-const API_KEY = 'AIzaSyCLjves72TK5WYp1psA4pQoekpSTiFbUlw';
-const PROJECT_ID = 'ceija12resm';
+import { readFileSync } from 'fs';
+
+function loadEnv() {
+  const path = '.env.local';
+  const env = {};
+  try {
+    const raw = readFileSync(path, 'utf-8');
+    for (const line of raw.split('\n')) {
+      const trimmed = line.trim();
+      if (!trimmed || trimmed.startsWith('#')) continue;
+      const eqIdx = trimmed.indexOf('=');
+      if (eqIdx === -1) continue;
+      env[trimmed.slice(0, eqIdx).trim()] = trimmed.slice(eqIdx + 1).trim();
+    }
+  } catch {}
+  return env;
+}
+
+const env = loadEnv();
+const API_KEY = env.VITE_FIREBASE_API_KEY;
+const PROJECT_ID = env.VITE_FIREBASE_PROJECT_ID;
+
+if (!API_KEY || !PROJECT_ID) {
+  console.error('Error: VITE_FIREBASE_API_KEY and VITE_FIREBASE_PROJECT_ID must be set in .env.local');
+  process.exit(1);
+}
 
 const AUTH_URL = `https://identitytoolkit.googleapis.com/v1/accounts:signInWithPassword?key=${API_KEY}`;
 const FIRESTORE_URL = `https://firestore.googleapis.com/v1/projects/${PROJECT_ID}/databases/(default)/documents`;
-const ADMIN_EMAIL = 'admin@ceija12resm.com';
+const ADMIN_EMAIL = 'admin@ceija.com';
 const ADMIN_PASS = 'Admin123!';
 
 async function signIn() {
@@ -24,10 +48,10 @@ async function deleteAllStudents(token) {
   const res = await fetch(url, { headers: { Authorization: `Bearer ${token}` } });
   const data = await res.json();
   if (!res.ok && res.status !== 404) throw new Error(`List error: ${JSON.stringify(data)}`);
-  
+
   const docs = data.documents || [];
   console.log(`Found ${docs.length} students`);
-  
+
   for (const doc of docs) {
     const name = doc.name;
     const id = name.split('/').pop();
@@ -66,7 +90,7 @@ function studentData(i) {
   const planInicial = `PLAN ${2018 + Math.floor(i / 5)}-${2023 + Math.floor(i / 5)}`;
   const plans = ['Plan A', 'Plan B', 'Plan C'];
   const gestiones = ['sin cargar', 'cargado', 'pase solicitado', 'invalido'];
-  
+
   return {
     fields: {
       apellido: { stringValue: apellido },
