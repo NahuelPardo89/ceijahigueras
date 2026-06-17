@@ -373,7 +373,7 @@ export const StudentDetail = () => {
                                 </td>
                                 <td style={{ padding: '8px 10px' }}>{log.userEmail || log.userId}</td>
                                 <td style={{ padding: '8px 10px', textAlign: 'center' }}>
-                                  <span className={`badge-${log.action === 'create' ? 'presencial' : log.action === 'delete' ? 'inactivo' : 'estado'}`}
+                                  <span className={`badge-${log.action === 'create' ? 'presencial' : log.action === 'delete' ? 'inactivo' : 'modificacion'}`}
                                     style={{ fontSize: '11px', padding: '2px 8px', borderRadius: '10px' }}>
                                     {log.action === 'create' ? 'Creación' : log.action === 'update' ? 'Modificación' : 'Eliminación'}
                                   </span>
