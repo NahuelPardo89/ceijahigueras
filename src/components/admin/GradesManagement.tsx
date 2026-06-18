@@ -426,8 +426,8 @@ export const GradesManagement = () => {
                     const pct = Math.round((prog.passed / prog.total) * 100);
                     const color = pct === 100 ? 'var(--color-success)' : pct === 0 ? 'var(--color-text-muted)' : 'var(--accent-primary)';
                     return (
-                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px', minWidth: '110px' }}>
-                        <div style={{ flex: 1, height: '6px', background: 'var(--bg-glass)', borderRadius: '3px', overflow: 'hidden', maxWidth: '80px' }}>
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '8px', marginLeft: '8px', minWidth: '150px' }}>
+                        <div style={{ flex: 1, height: '8px', background: 'var(--bg-glass)', borderRadius: '4px', overflow: 'hidden', maxWidth: '120px' }}>
                           <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '3px', transition: 'width 0.3s ease' }} />
                         </div>
                         <span style={{ fontSize: '11px', color: pct === 100 ? 'var(--color-success)' : 'var(--color-text-muted)', whiteSpace: 'nowrap', fontWeight: pct === 100 ? 600 : 400 }}>
