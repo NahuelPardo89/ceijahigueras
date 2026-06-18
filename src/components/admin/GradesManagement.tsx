@@ -235,6 +235,19 @@ export const GradesManagement = () => {
           }
         }
         newCache[sid] = { passed: passedIds.size, total };
+
+        if (student.planActual === 'Plan C' && passedIds.size === 0 && total > 0) {
+          console.group('Plan C progress debug');
+          console.log('Student:', sid, student.apellido, student.nombre);
+          console.log('planId:', student.planId, '| planActual:', student.planActual);
+          console.log('planSubjects count:', planSubjects.length, '| total in range:', total);
+          console.log('Grades for this student:', (byStudent[sid] || []).length);
+          for (const g of byStudent[sid] || []) {
+            const sub = planSubjects.find(s => s.id === g.subjectId);
+            console.log('  Grade:', { subjectId: g.subjectId, nota: g.nota, isAprobado: isAprobado(g.nota), subjectFound: !!sub, subModulo: sub?.modulo, subNombre: sub?.nombre });
+          }
+          console.groupEnd();
+        }
       }
 
       if (!cancelled) {
