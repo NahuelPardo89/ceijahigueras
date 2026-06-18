@@ -1,9 +1,11 @@
-import { useEffect, useState, useMemo, useCallback } from 'react';
+import { useEffect, useState, useMemo, useCallback, useRef } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { useStudents, type StudentRecord } from '../../hooks/useStudents';
 import { useSubjects, type Subject } from '../../hooks/useSubjects';
 import { useGrades, type Grade } from '../../hooks/useGrades';
 import { useEquivalences, type Equivalence } from '../../hooks/useEquivalences';
+import { collection, query, where, getDocs } from 'firebase/firestore';
+import { db } from '../../firebase/config';
 import { GradesFormModal } from './GradesFormModal';
 import { EquivalenceFormModal } from './EquivalenceFormModal';
 import { GraduationCap, RefreshCw, Search, Plus, BookOpen, FileSpreadsheet } from 'lucide-react';
@@ -43,6 +45,21 @@ export const GradesManagement = () => {
   const [currentPage, setCurrentPage] = useState(1);
   const [pageSize, setPageSize] = useState(25);
   const [exportingRac, setExportingRac] = useState(false);
+  const [progressCache, setProgressCache] = useState<Record<string, { passed: number; total: number }>>({});
+  const loadedRef = useRef(new Set<string>());
+
+  const getModuleRange = (plan: string): [number, number] => {
+    switch (plan) {
+      case 'Plan B': return [4, 9];
+      case 'Plan C': return [7, 9];
+      default: return [1, 9];
+    }
+  };
+
+  const isAprobado = (nota: string): boolean => {
+    const num = Number(nota);
+    return nota === 'Aprobado' || (!isNaN(num) && num >= 6);
+  };
 
   useEffect(() => {
     let cancelled = false;
@@ -176,6 +193,59 @@ export const GradesManagement = () => {
     const start = (currentPage - 1) * pageSize;
     return filtered.slice(start, start + pageSize);
   }, [filtered, currentPage, pageSize]);
+
+  useEffect(() => {
+    const ids = paginated.filter(s => !loadedRef.current.has(s.id) && subjectsByPlan[s.planId || '']).map(s => s.id);
+    if (ids.length === 0) return;
+
+    let cancelled = false;
+
+    const load = async () => {
+      const allGrades: Grade[] = [];
+      for (let i = 0; i < ids.length; i += 10) {
+        if (cancelled) return;
+        const batch = ids.slice(i, i + 10);
+        const q = query(collection(db, 'grades'), where('studentId', 'in', batch));
+        const snap = await getDocs(q);
+        allGrades.push(...snap.docs.map(d => ({ id: d.id, ...d.data() } as Grade)));
+      }
+      if (cancelled) return;
+
+      const byStudent: Record<string, Grade[]> = {};
+      for (const g of allGrades) {
+        if (!byStudent[g.studentId]) byStudent[g.studentId] = [];
+        byStudent[g.studentId].push(g);
+      }
+
+      const newCache: Record<string, { passed: number; total: number }> = {};
+      for (const sid of ids) {
+        const student = students.find(s => s.id === sid);
+        if (!student) continue;
+        const [minMod, maxMod] = getModuleRange(student.planActual);
+        const planSubjects = subjectsByPlan[student.planId || ''] || [];
+        const total = planSubjects.filter(s => s.modulo >= minMod && s.modulo <= maxMod).length;
+
+        const passedIds = new Set<string>();
+        for (const g of byStudent[sid] || []) {
+          if (isAprobado(g.nota)) {
+            const sub = planSubjects.find(s => s.id === g.subjectId);
+            if (sub && sub.modulo >= minMod && sub.modulo <= maxMod) {
+              passedIds.add(g.subjectId);
+            }
+          }
+        }
+        newCache[sid] = { passed: passedIds.size, total };
+      }
+
+      if (!cancelled) {
+        for (const id of ids) loadedRef.current.add(id);
+        setProgressCache(prev => ({ ...prev, ...newCache }));
+      }
+    };
+
+    load();
+    return () => { cancelled = true; };
+  }, [paginated, students, subjectsByPlan]);
 
   const handlePageChange = useCallback((page: number) => setCurrentPage(page), []);
   const handlePageSizeChange = useCallback((size: number) => setPageSize(size), []);
@@ -350,6 +420,22 @@ export const GradesManagement = () => {
                     <span className="user-name">{s.apellido}, {s.nombre}</span>
                     <span className="user-email">DNI: {s.dni} &middot; {s.planActual} &middot; {s.cursado === 'virtual' ? 'Virtual' : 'Presencial'}</span>
                   </div>
+                  {(() => {
+                    const prog = progressCache[s.id];
+                    if (!prog || prog.total === 0) return null;
+                    const pct = Math.round((prog.passed / prog.total) * 100);
+                    const color = pct === 100 ? 'var(--color-success)' : pct === 0 ? 'var(--color-text-muted)' : 'var(--accent-primary)';
+                    return (
+                      <div style={{ display: 'flex', alignItems: 'center', gap: '6px', marginLeft: '8px', minWidth: '110px' }}>
+                        <div style={{ flex: 1, height: '6px', background: 'var(--bg-glass)', borderRadius: '3px', overflow: 'hidden', maxWidth: '80px' }}>
+                          <div style={{ width: `${pct}%`, height: '100%', background: color, borderRadius: '3px', transition: 'width 0.3s ease' }} />
+                        </div>
+                        <span style={{ fontSize: '11px', color: pct === 100 ? 'var(--color-success)' : 'var(--color-text-muted)', whiteSpace: 'nowrap', fontWeight: pct === 100 ? 600 : 400 }}>
+                          {prog.passed}/{prog.total}
+                        </span>
+                      </div>
+                    );
+                  })()}
                   <div className="role-select-wrapper">
                     <span style={{ fontSize: '12px', color: 'var(--color-text-muted)' }}>
                       {expandedStudent === s.id ? '▼' : '▶'} Ver calificaciones
