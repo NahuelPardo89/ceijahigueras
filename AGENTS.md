@@ -86,3 +86,11 @@ npx firebase deploy  # deploy to Firebase
 ## Test Users
 - Admin: admin@ceija.com / Admin123!
 - Prof: prof@ceija.com / Prof1234!
+- Cloud agent (Profesor, active): `agente.entorno@ceija12resm.com`. Password is `TEST_LOGIN_PASSWORD` in gitignored `.env.local`, not in this file.
+
+## Cursor Cloud specific instructions
+- Node.js 22 and npm are already available. Install with `npm ci`. It is safe to run again.
+- Dev server: `npm run dev -- --host 0.0.0.0 --port 5173`. Vite reads Firebase web config from the process environment or from gitignored `.env.local`: `VITE_FIREBASE_API_KEY`, `VITE_FIREBASE_AUTH_DOMAIN`, `VITE_FIREBASE_PROJECT_ID`, `VITE_FIREBASE_STORAGE_BUCKET`, `VITE_FIREBASE_MESSAGING_SENDER_ID`, `VITE_FIREBASE_APP_ID`. A fresh checkout does not include `.env.local`. Process environment values with those names override the file.
+- `npm run build` typechecks and builds. `npm run lint` currently exits with existing `react-hooks/set-state-in-effect`, `no-empty`, and `react-refresh/only-export-components` errors in the app source.
+- There is no automated test suite. A signed-in Profesor can open Gestión de Estudiantes and read the student list.
+- Do not run `seed-students.mjs` or `firebase deploy` during routine setup. Both change the hosted `ceija12resm` project.
