@@ -28,3 +28,11 @@ dist-ssr
 *.njsproj
 *.sln
 *.sw?
+
+# Exportaciones y planillas locales (pueden tener datos personales)
+*.xlsx
+*.csv
+firestore-debug.log
+ui-debug.log
+database-debug.log
+*-debug.log

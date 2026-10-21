@@ -635,7 +635,7 @@ export const GradesManagement = () => {
         <GradesFormModal
           student={selectedStudent}
           planId={selectedStudent.planId || ''}
-          subjects={user?.role === 'Profesor' && user.subjectIds
+          subjects={user?.role === 'docente' && user.subjectIds
             ? (subjectsByPlan[selectedStudent.planId || ''] || []).filter(s => user.subjectIds!.includes(s.id))
             : (subjectsByPlan[selectedStudent.planId || ''] || [])
           }

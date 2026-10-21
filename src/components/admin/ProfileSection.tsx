@@ -2,6 +2,7 @@ import { useState, type FormEvent } from 'react';
 import { useAuth } from '../../hooks/useAuth';
 import { User, Shield, Lock, AlertCircle, Eye, EyeOff } from 'lucide-react';
 import { getFirebaseErrorMessage } from '../../utils/errors';
+import { esAdmin, etiquetaRol } from '../../domain/roles';
 import { useToast } from '../../context/ToastContext';
 
 export const ProfileSection = () => {
@@ -68,7 +69,7 @@ export const ProfileSection = () => {
           background: 'var(--bg-card)', borderRadius: 'var(--radius-input)',
           border: '1px solid var(--border-glass)',
         }}>
-          <div className={`avatar-sm ${user.role === 'Administrador' ? 'avatar-admin' : 'avatar-profesor'}`}
+          <div className={`avatar-sm ${esAdmin(user.role) ? 'avatar-admin' : 'avatar-profesor'}`}
             style={{ width: '56px', height: '56px', fontSize: '20px' }}>
             {initials}
           </div>
@@ -78,7 +79,7 @@ export const ProfileSection = () => {
             </div>
             <div style={{ fontSize: '13px', color: 'var(--color-text-secondary)', display: 'flex', alignItems: 'center', gap: '6px', marginTop: '4px' }}>
               <Shield size={14} style={{ color: 'var(--accent-primary)' }} />
-              {user.role}
+              {etiquetaRol(user.role)}
               <span style={{ color: 'var(--color-text-muted)' }}>&middot;</span>
               {user.email}
             </div>

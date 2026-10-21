@@ -4,11 +4,13 @@ import { useAuth } from './hooks/useAuth';
 import { Landing } from './components/Landing';
 import { Login } from './components/Login';
 import { ForgotPassword } from './components/ForgotPassword';
+import { SolicitarAcceso } from './components/SolicitarAcceso';
+import { PendienteScreen } from './components/PendienteScreen';
 import { Dashboard } from './components/Dashboard';
 import { ErrorBoundary } from './components/ErrorBoundary';
 import { ToastProvider } from './context/ToastContext';
 
-type View = 'landing' | 'login' | 'forgot-password';
+type View = 'landing' | 'login' | 'forgot-password' | 'solicitar';
 
 const AppContent = () => {
   const { user, loading } = useAuth();
@@ -25,6 +27,7 @@ const AppContent = () => {
     );
   }
 
+  if (user?.role === 'pendiente') return <PendienteScreen />;
   if (user) return <Dashboard />;
 
   switch (view) {
@@ -34,6 +37,8 @@ const AppContent = () => {
       return <Login onSwitchView={setView} />;
     case 'forgot-password':
       return <ForgotPassword onSwitchView={() => setView('login')} />;
+    case 'solicitar':
+      return <SolicitarAcceso onBack={() => setView('login')} />;
     default:
       return null;
   }

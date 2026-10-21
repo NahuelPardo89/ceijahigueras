@@ -28,7 +28,7 @@ const EMPTY_FORM: SubjectForm = { nombre: '', modulo: 1, tipo: 'basico' };
 export const SubjectManagement = ({ plan, onBack }: SubjectManagementProps) => {
   const { user } = useAuth();
   const { getSubjectsByPlan, createSubject, updateSubject, deleteSubject, loading, error } = useSubjects();
-  const isAdmin = user?.role === 'Administrador';
+  const isAdmin = user?.role === 'admin';
   const [subjects, setSubjects] = useState<Subject[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [editingId, setEditingId] = useState<string | null>(null);

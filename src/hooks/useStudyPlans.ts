@@ -49,7 +49,7 @@ export const useStudyPlans = () => {
   }, []);
 
   const createPlan = useCallback(async (data: CreateStudyPlanData) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para crear planes de estudio.');
       throw new Error('No autorizado');
     }
@@ -74,7 +74,7 @@ export const useStudyPlans = () => {
   }, [user, createLog]);
 
   const updatePlan = useCallback(async (id: string, data: Partial<CreateStudyPlanData & { active: boolean }>) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para editar planes de estudio.');
       throw new Error('No autorizado');
     }
@@ -93,7 +93,7 @@ export const useStudyPlans = () => {
   }, [user, createLog]);
 
   const deletePlan = useCallback(async (id: string) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para eliminar planes de estudio.');
       throw new Error('No autorizado');
     }

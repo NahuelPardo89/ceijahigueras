@@ -4,7 +4,7 @@ import { Mail, Lock, Eye, EyeOff, LogIn, AlertCircle } from 'lucide-react';
 import { EMAIL_REGEX } from '../utils/constants';
 
 interface LoginProps {
-  onSwitchView: (view: 'forgot-password') => void;
+  onSwitchView: (view: 'forgot-password' | 'solicitar') => void;
 }
 
 export const Login = ({ onSwitchView }: LoginProps) => {
@@ -128,6 +128,10 @@ export const Login = ({ onSwitchView }: LoginProps) => {
           )}
         </button>
       </form>
+
+      <button type="button" className="text-link" onClick={() => onSwitchView('solicitar')} style={{ marginTop: 12 }}>
+        Solicitar acceso
+      </button>
 
       <div className="divider">o continuar con</div>
 

@@ -1895,4 +1895,53 @@ button.text-link {
   .print-report .stat-table tr { background: transparent !important; }
 
   #root { height: auto !important; min-height: 0 !important; }
+
+  .no-print { display: none !important; }
+  .solo-print { display: inline !important; }
+  .rac-print, .rac-print h1, .rac-print h2, .rac-print p, .rac-print td, .rac-print th {
+    color: #000 !important;
+  }
 }
+
+.ayuda {
+  color: var(--color-text-secondary);
+  font-size: 13px;
+  margin: 8px 0 12px;
+}
+
+.tabla-wrap { overflow-x: auto; }
+
+.tabla-rac {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 13px;
+}
+
+.tabla-rac th, .tabla-rac td {
+  padding: 8px;
+  border-bottom: 1px solid var(--border-glass);
+  text-align: left;
+  vertical-align: top;
+}
+
+.bloque-asignacion {
+  width: 100%;
+  margin-top: 8px;
+  padding: 12px;
+  border: 1px solid var(--border-glass);
+  border-radius: 12px;
+}
+
+.check-linea {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  font-size: 13px;
+}
+
+.alerta-vencido { color: var(--color-danger); font-weight: 600; }
+.alerta-pronto { color: var(--color-warning); font-weight: 600; }
+
+.texto-datos p { margin-bottom: 12px; color: var(--color-text-secondary); line-height: 1.5; }
+
+.solo-print { display: none; }

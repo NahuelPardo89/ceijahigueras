@@ -1,142 +1,363 @@
 rules_version = '2';
+// Sin Cloud Functions (plan Spark): estas reglas son el control de acceso.
+// Roles nuevos: admin, docente, lectura, pendiente.
+// Se siguen aceptando Administrador y Profesor para no dejar afuera las cuentas ya cargadas.
 service cloud.firestore {
   match /databases/{database}/documents {
 
-    function isAdmin() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Administrador';
+    function signedIn() {
+      return request.auth != null;
     }
 
-    function isProfessor() {
-      return request.auth != null
-        && exists(/databases/$(database)/documents/users/$(request.auth.uid))
-        && get(/databases/$(database)/documents/users/$(request.auth.uid)).data.role == 'Profesor';
+    function userPath() {
+      return /databases/$(database)/documents/users/$(request.auth.uid);
     }
 
-    function isOwner(uid) {
-      return request.auth != null && request.auth.uid == uid;
+    function userExists() {
+      return signedIn() && exists(userPath());
     }
 
-    function isValidRole(role) {
-      return role in ['Administrador', 'Profesor'];
+    function userData() {
+      return get(userPath()).data;
     }
 
-    function hasRequiredCreateFields() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['email', 'displayName', 'role', 'createdAt'])
-        && data.email is string
-        && data.email.size() > 0
-        && data.displayName is string
-        && data.displayName.size() > 0
-        && data.createdAt is string;
+    function cuentaActiva() {
+      return userData().get('disabled', false) != true
+        && userData().get('activo', true) != false;
     }
 
-    function hasValidRoleData() {
-      return !request.resource.data.keys().hasAny(['role'])
-        || isValidRole(request.resource.data.role);
+    function rol() {
+      return userData().role;
     }
 
-    function roleUnchanged() {
-      return request.resource.data.role == resource.data.role;
+    function esAdmin() {
+      return userExists() && cuentaActiva() && (rol() == 'admin' || rol() == 'Administrador');
     }
 
-    function professorSubjectIds() {
-      return get(/databases/$(database)/documents/users/$(request.auth.uid)).data.subjectIds;
+    function esDocente() {
+      return userExists() && cuentaActiva() && (rol() == 'docente' || rol() == 'Profesor');
     }
 
-    function canManageSubject(subjectId) {
-      return subjectId in professorSubjectIds();
+    function esLectura() {
+      return userExists() && cuentaActiva() && rol() == 'lectura';
     }
 
-    function hasValidGradeFields() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['studentId', 'subjectId', 'planId', 'nota', 'fecha', 'createdAt'])
-        && data.studentId is string
-        && data.studentId.size() > 0
-        && data.subjectId is string
-        && data.subjectId.size() > 0
-        && data.planId is string
-        && data.planId.size() > 0
-        && data.nota is string
-        && data.nota.size() > 0
-        && data.fecha is string
-        && data.fecha.size() > 0
-        && data.createdAt is string;
+    function esStaff() {
+      return esAdmin() || esDocente() || esLectura();
+    }
+
+    function rolAsignable(role) {
+      return role in ['admin', 'docente', 'lectura', 'pendiente', 'Administrador', 'Profesor'];
+    }
+
+    function docentePath() {
+      return /databases/$(database)/documents/docentes/$(request.auth.uid);
+    }
+
+    function docenteData() {
+      return get(docentePath()).data;
+    }
+
+    function claveEspacio(planId, espacioId, anio) {
+      return planId + '|' + espacioId + '|' + string(anio);
+    }
+
+    function asignadoEspacio(planId, espacioId, anio) {
+      let clave = claveEspacio(planId, espacioId, anio);
+      return exists(docentePath())
+        && clave in docenteData().espacios
+        && docenteData().espacios[clave] == true;
+    }
+
+    function asignadoPlanAnio(planId, anio) {
+      let clave = planId + '|' + string(anio);
+      return exists(docentePath())
+        && clave in docenteData().planesAnio
+        && docenteData().planesAnio[clave] == true;
+    }
+
+    function ensenaM8() {
+      return exists(docentePath()) && docenteData().get('ensenaM8', false) == true;
+    }
+
+    function racPath(racId) {
+      return /databases/$(database)/documents/rac/$(racId);
+    }
+
+    function racAbierto(racId) {
+      return exists(racPath(racId)) && get(racPath(racId)).data.estado == 'abierto';
+    }
+
+    function notaValida(n) {
+      return n == null || n in [1, 1.5, 2, 2.5, 3, 3.5, 4, 4.5, 5, 5.5, 6, 6.5, 7, 7.5, 8, 8.5, 9, 9.5, 10];
+    }
+
+    function tpiValido(t) {
+      return t in ['APROBADO', 'REVISAR', ''];
+    }
+
+    function condicionValida(c) {
+      return c in ['Reg', 'Prev', 'Equiv', 'Lib', ''];
+    }
+
+    function estadoNotaCoherente() {
+      let d = request.resource.data;
+      return d.estado in ['pendiente', 'aprobado', 'adeuda']
+        && (d.estado != 'aprobado'
+          || (d.notaFinal is number && d.notaFinal >= 6 && d.tpi != 'REVISAR'));
+    }
+
+    function camposNotaDocente() {
+      return request.resource.data.diff(resource.data).affectedKeys()
+        .hasOnly(['tpi', 'notaFinal', 'notaLetras', 'fecha', 'docenteUid', 'estado']);
+    }
+
+    function puedeDocenteEditarNota(racId, espacioId) {
+      let rac = get(racPath(racId)).data;
+      return esDocente()
+        && racAbierto(racId)
+        && camposNotaDocente()
+        && notaValida(request.resource.data.notaFinal)
+        && tpiValido(request.resource.data.tpi)
+        && request.resource.data.fecha is string
+        && request.resource.data.fecha.size() <= 7
+        && request.resource.data.docenteUid == request.auth.uid
+        && estadoNotaCoherente()
+        && (asignadoEspacio(rac.planId, espacioId, rac.anio)
+          || (resource.data.compartidoM8 == true && ensenaM8()));
+    }
+
+    function puedeAdminEditarNota(racId) {
+      return esAdmin()
+        && racAbierto(racId)
+        && notaValida(request.resource.data.get('notaFinal', null))
+        && tpiValido(request.resource.data.get('tpi', ''))
+        && condicionValida(request.resource.data.get('condicion', ''))
+        && estadoNotaCoherente();
+    }
+
+    function sinDatosSensibles() {
+      return !request.resource.data.keys().hasAny([
+        'dni', 'cuil', 'email', 'telefono', 'fechaNacimiento', 'fechaNac'
+      ]);
+    }
+
+    function usuarioAutocreado() {
+      let d = request.resource.data;
+      return d.role == 'pendiente'
+        && d.email is string
+        && d.email.size() > 0
+        && d.displayName is string
+        && d.displayName.size() > 0
+        && d.createdAt is string
+        && d.get('activo', true) == true
+        && d.get('disabled', false) == false;
     }
 
     match /users/{uid} {
-      allow read: if request.auth != null && (isOwner(uid) || isAdmin());
+      allow read: if signedIn() && (request.auth.uid == uid || esAdmin());
 
-      allow create: if request.auth != null && (
-        (isOwner(uid)
-          && request.resource.data.role == 'Profesor'
-          && hasRequiredCreateFields())
-        ||
-        (isAdmin()
-          && hasRequiredCreateFields()
-          && isValidRole(request.resource.data.role))
+      allow create: if signedIn() && (
+        (request.auth.uid == uid && usuarioAutocreado())
+        || (esAdmin()
+          && request.resource.data.email is string
+          && request.resource.data.displayName is string
+          && request.resource.data.createdAt is string
+          && rolAsignable(request.resource.data.role))
       );
 
-      allow update: if request.auth != null && (
-        (isOwner(uid) && roleUnchanged() && hasValidRoleData())
-        ||
-        (isAdmin() && hasValidRoleData())
-      );
+      allow update: if (esAdmin() && rolAsignable(request.resource.data.role))
+        || (signedIn()
+          && request.auth.uid == uid
+          && request.resource.data.role == resource.data.role
+          && request.resource.data.get('disabled', false) == resource.data.get('disabled', false)
+          && request.resource.data.get('activo', true) == resource.data.get('activo', true));
 
       allow delete: if false;
     }
 
-    match /students/{studentId} {
-      allow read: if request.auth != null;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+    match /docentes/{uid} {
+      allow read: if esAdmin() || (signedIn() && request.auth.uid == uid);
+      allow create, update: if esAdmin()
+        && request.resource.data.claves is list
+        && request.resource.data.espacios is map
+        && request.resource.data.planesAnio is map
+        && request.resource.data.ensenaM8 is bool;
+      allow delete: if esAdmin();
     }
 
-    match /studyPlans/{planId} {
-      allow read: if request.auth != null;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+    match /config/{docId} {
+      allow read: if esStaff();
+      allow create, update: if esAdmin();
+      allow delete: if false;
     }
 
-    match /subjects/{subjectId} {
-      allow read: if request.auth != null;
-      allow create: if isAdmin();
-      allow update: if isAdmin();
-      allow delete: if isAdmin();
+    match /ciclos/{anio} {
+      allow read: if esStaff();
+      allow create, update: if esAdmin()
+        && request.resource.data.anio is int
+        && request.resource.data.estado in ['abierto', 'cerrado'];
+      allow delete: if false;
     }
 
-    match /grades/{gradeId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(request.resource.data.subjectId))) && hasValidGradeFields();
-      allow update: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(resource.data.subjectId)));
-      allow delete: if request.auth != null && (isAdmin() || (isProfessor() && canManageSubject(resource.data.subjectId)));
+    match /planes/{planId} {
+      allow read: if esStaff();
+      allow create, update: if esAdmin();
+      allow delete: if false;
+
+      match /espacios/{espacioId} {
+        allow read: if esStaff();
+        allow create, update, delete: if esAdmin();
+      }
     }
 
-    function hasValidEquivalenceFields() {
-      let data = request.resource.data;
-      return data.keys().hasAll(['studentId', 'nombre', 'nota', 'fecha', 'createdAt'])
-        && data.studentId is string && data.studentId.size() > 0
-        && data.nombre is string && data.nombre.size() > 0
-        && data.nota is string && data.nota.size() > 0
-        && data.fecha is string && data.fecha.size() > 0
-        && data.createdAt is string;
+    match /estudiantes/{estudianteId} {
+      allow read: if esAdmin() || esLectura();
+      allow create, update: if esAdmin() && sinDatosSensibles();
+      allow delete: if false;
+
+      match /privado/{docId} {
+        allow read, create, update: if esAdmin();
+        allow delete: if false;
+      }
     }
 
-    match /equivalences/{eqId} {
-      allow read: if request.auth != null;
-      allow create: if request.auth != null && hasValidEquivalenceFields();
-      allow update: if request.auth != null;
-      allow delete: if request.auth != null;
+    match /dniIndex/{dni} {
+      allow read: if esAdmin();
+      allow create: if esAdmin()
+        && dni.matches('^[0-9]{7,8}$')
+        && request.resource.data.estudianteId is string
+        && request.resource.data.estudianteId.size() > 0;
+      allow update, delete: if false;
+    }
+
+    match /resumenes/{resumenId} {
+      allow read: if esAdmin() || esLectura();
+      allow create, update: if esAdmin();
+      allow delete: if false;
+    }
+
+    match /indices/{indiceId} {
+      allow read: if esAdmin() || esLectura()
+        || (esDocente() && asignadoEspacio(resource.data.planId, resource.data.espacioId, resource.data.anio));
+      allow create, update: if esAdmin()
+        && request.resource.data.planId is string
+        && request.resource.data.espacioId is string
+        && request.resource.data.anio is int;
+      allow delete: if false;
+    }
+
+    match /rac/{racId} {
+      allow read: if esAdmin() || esLectura()
+        || (esDocente() && asignadoPlanAnio(resource.data.planId, resource.data.anio));
+
+      allow create: if esAdmin()
+        && request.resource.data.estudianteId is string
+        && request.resource.data.estudianteId.size() > 0
+        && request.resource.data.anio is int
+        && request.resource.data.planId is string
+        && request.resource.data.planId.size() > 0
+        && request.resource.data.estado == 'abierto'
+        && request.resource.data.apellido is string
+        && request.resource.data.nombre is string
+        && racId == request.resource.data.estudianteId + '_' + string(request.resource.data.anio) + '_' + request.resource.data.planId;
+
+      allow update: if (esAdmin() && request.resource.data.estado in ['abierto', 'cerrado'])
+        || (esDocente()
+          && asignadoPlanAnio(resource.data.planId, resource.data.anio)
+          && resource.data.estado == 'abierto'
+          && request.resource.data.estado == 'abierto'
+          && request.resource.data.diff(resource.data).affectedKeys().hasOnly(['resumen']));
+
+      allow delete: if false;
+
+      match /calificaciones/{espacioId} {
+        allow read: if esAdmin() || esLectura()
+          || (esDocente() && (
+            asignadoEspacio(get(racPath(racId)).data.planId, espacioId, get(racPath(racId)).data.anio)
+            || (resource.data.compartidoM8 == true && ensenaM8())
+          ));
+
+        allow create: if esAdmin()
+          && request.resource.data.espacioId == espacioId
+          && request.resource.data.nombre is string
+          && request.resource.data.modulo is string
+          && request.resource.data.orden is int
+          && request.resource.data.compartidoM8 is bool
+          && request.resource.data.fecha is string
+          && notaValida(request.resource.data.notaFinal)
+          && tpiValido(request.resource.data.tpi)
+          && condicionValida(request.resource.data.condicion)
+          && estadoNotaCoherente();
+
+        allow update: if puedeAdminEditarNota(racId) || puedeDocenteEditarNota(racId, espacioId);
+        allow delete: if false;
+      }
+    }
+
+    match /equivalencias/{eqId} {
+      allow read: if esAdmin() || esLectura();
+      allow create, update: if esAdmin()
+        && request.resource.data.estudianteId is string
+        && request.resource.data.estudianteId.size() > 0
+        && request.resource.data.espacioId is string
+        && request.resource.data.nota is number
+        && notaValida(request.resource.data.nota)
+        && request.resource.data.nota >= 6
+        && request.resource.data.fecha is string
+        && request.resource.data.origen is string;
+      allow delete: if esAdmin();
+    }
+
+    match /pases/{paseId} {
+      allow read: if esAdmin() || esLectura();
+      allow create, update: if esAdmin()
+        && request.resource.data.estudianteId is string
+        && request.resource.data.estudianteId.size() > 0
+        && request.resource.data.tipo in ['ingreso', 'egreso']
+        && request.resource.data.escuelaOrigenDestino is string
+        && request.resource.data.fecha is string
+        && request.resource.data.provisorio is bool
+        && request.resource.data.definitivo is bool
+        && request.resource.data.vencimiento is string
+        && request.resource.data.formularioD is bool;
+      allow delete: if esAdmin();
     }
 
     match /logs/{logId} {
-      allow read: if isAdmin();
-      allow create: if request.auth != null;
-      allow update: if false;
-      allow delete: if false;
+      allow read: if esAdmin();
+      allow create: if userExists()
+        && cuentaActiva()
+        && request.resource.data.uid == request.auth.uid
+        && request.resource.data.accion in ['create', 'update', 'delete']
+        && request.resource.data.entidad is string
+        && request.resource.data.entityId is string
+        && request.resource.data.timestamp is string;
+      allow update, delete: if false;
+    }
+
+    // Colecciones anteriores. Quedan solo para el administrador hasta la migración.
+    // students contiene DNI y contacto: nadie más puede leerlas.
+    match /students/{studentId} {
+      allow read, create, update, delete: if esAdmin();
+    }
+
+    match /grades/{gradeId} {
+      allow read, create, update, delete: if esAdmin();
+    }
+
+    match /equivalences/{eqId} {
+      allow read, create, update, delete: if esAdmin();
+    }
+
+    match /subjects/{subjectId} {
+      allow read: if esStaff();
+      allow create, update, delete: if esAdmin();
+    }
+
+    match /studyPlans/{planId} {
+      allow read: if esStaff();
+      allow create, update, delete: if esAdmin();
     }
   }
 }

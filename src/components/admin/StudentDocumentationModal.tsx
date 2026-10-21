@@ -16,7 +16,7 @@ export const StudentDocumentationModal = ({ student, onClose, onSuccess }: Props
   const { toast } = useToast();
   const { user } = useAuth();
   const { updateStudent, loading } = useStudents();
-  const isAdmin = user?.role === 'Administrador';
+  const isAdmin = user?.role === 'admin';
 
   const [doc, setDoc] = useState({
     paseProvisorio: student.paseProvisorio ?? false,

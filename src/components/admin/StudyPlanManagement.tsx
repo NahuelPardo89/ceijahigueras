@@ -8,7 +8,7 @@ import { SubjectManagement } from './SubjectManagement';
 export const StudyPlanManagement = () => {
   const { user } = useAuth();
   const { getAllPlans, updatePlan, deletePlan } = useStudyPlans();
-  const isAdmin = user?.role === 'Administrador';
+  const isAdmin = user?.role === 'admin';
   const [plans, setPlans] = useState<StudyPlan[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [showModal, setShowModal] = useState<'create' | 'edit' | null>(null);

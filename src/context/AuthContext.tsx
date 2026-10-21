@@ -26,8 +26,9 @@ import {
 import { auth, db, API_KEY } from '../firebase/config';
 import { getFirebaseErrorMessage } from '../utils/errors';
 import { writeLog, logCreate, logUpdate } from '../hooks/useLogs';
+import { esAdmin, normalizeRole } from '../domain/roles';
 
-export type UserRole = 'Administrador' | 'Profesor';
+export type UserRole = 'admin' | 'docente' | 'lectura' | 'pendiente';
 
 export interface AuthUser {
   uid: string;
@@ -87,19 +88,19 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   useEffect(() => {
     const unsubscribe = onAuthStateChanged(auth, async (firebaseUser) => {
       if (firebaseUser) {
-        let role: UserRole = 'Profesor';
+        let role: UserRole = 'pendiente';
         let docDisabled = false;
         let subjectIds: string[] | undefined;
         try {
           const snap = await getDoc(doc(db, 'users', firebaseUser.uid));
           if (snap.exists()) {
             const data = snap.data();
-            role = (data.role as UserRole) || 'Profesor';
-            docDisabled = data.disabled === true;
+            role = normalizeRole(data.role);
+            docDisabled = data.disabled === true || data.activo === false;
             subjectIds = data.subjectIds as string[] | undefined;
           }
         } catch (err) {
-          console.warn('No se pudo leer el rol desde Firestore, usando valor por defecto:', err);
+          console.warn('No se pudo leer el rol desde Firestore. La cuenta queda pendiente:', err);
         }
 
         if (docDisabled) {
@@ -150,11 +151,12 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         await setDoc(doc(db, 'users', userCred.user.uid), {
           email,
           displayName: name,
-          role: 'Profesor' as UserRole,
+          role: 'pendiente' as UserRole,
           createdAt: new Date().toISOString(),
           disabled: false,
+          activo: true,
         });
-        await writeLog(userCred.user.uid, userCred.user.email, 'Profesor', logCreate('user', userCred.user.uid, { email, displayName: name, role: 'Profesor' }));
+        await writeLog(userCred.user.uid, userCred.user.email, 'pendiente', logCreate('user', userCred.user.uid, { email, displayName: name, role: 'pendiente' }));
       }
     } catch (err) {
       console.error(err);
@@ -200,14 +202,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
       if (result.user) {
         const snap = await getDoc(doc(db, 'users', result.user.uid));
         if (!snap.exists()) {
+          if (!result.user.email) {
+            throw new Error('La cuenta de Google no tiene correo. Pide al administrador que te habilite.');
+          }
           await setDoc(doc(db, 'users', result.user.uid), {
             email: result.user.email,
-            displayName: result.user.displayName,
-            role: 'Profesor' as UserRole,
+            displayName: result.user.displayName || 'Sin nombre',
+            role: 'pendiente' as UserRole,
             createdAt: new Date().toISOString(),
             disabled: false,
+            activo: true,
           });
-          await writeLog(result.user.uid, result.user.email, 'Profesor', logCreate('user', result.user.uid, { email: result.user.email, displayName: result.user.displayName, role: 'Profesor', provider: 'google' }));
+          await writeLog(result.user.uid, result.user.email, 'pendiente', logCreate('user', result.user.uid, { email: result.user.email, displayName: result.user.displayName, role: 'pendiente', provider: 'google' }));
         }
       }
     } catch (err) {
@@ -228,7 +234,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         uid: d.id,
         email: data.email ?? null,
         displayName: data.displayName ?? null,
-        role: data.role as UserRole,
+        role: normalizeRole(data.role),
         createdAt: data.createdAt ?? '',
         disabled: data.disabled ?? false,
         subjectIds: data.subjectIds as string[] | undefined,
@@ -247,15 +253,18 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   }, [user]);
 
   const createUser = useCallback(async (email: string, password: string, displayName: string, role: UserRole, subjectIds?: string[]) => {
-    if (user?.role !== 'Administrador') {
+    if (!user || !esAdmin(user.role)) {
       setError('No tienes permisos para crear usuarios.');
       throw new Error('No autorizado');
     }
     setLoading(true);
     setError(null);
     try {
+      const authBase = import.meta.env.VITE_USE_EMULATORS === 'true'
+        ? 'http://127.0.0.1:9099/identitytoolkit.googleapis.com/v1'
+        : 'https://identitytoolkit.googleapis.com/v1';
       const response = await fetch(
-        `https://identitytoolkit.googleapis.com/v1/accounts:signUp?key=${API_KEY}`,
+        `${authBase}/accounts:signUp?key=${API_KEY}`,
         {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -275,6 +284,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
         role,
         createdAt: new Date().toISOString(),
         disabled: false,
+        activo: true,
         ...(subjectIds ? { subjectIds } : {}),
       });
       await writeLog(user.uid, user.email, user.role, logCreate('user', data.localId, { email, displayName, role, subjectIds }));
@@ -314,7 +324,7 @@ export const AuthProvider = ({ children }: { children: ReactNode }) => {
   const disableUser = useCallback(async (uid: string, disabled: boolean) => {
     setError(null);
     try {
-      await updateDoc(doc(db, 'users', uid), { disabled });
+      await updateDoc(doc(db, 'users', uid), { disabled, activo: !disabled });
       if (user) {
         await writeLog(user.uid, user.email, user.role, logUpdate('user', uid, { disabled }));
       }
