@@ -1,88 +1,82 @@
 # CEIJA Higueras — Project Summary
 
 ## Overview
-School management system (Sistema de Gestión Escolar) for CEIJA N°12 Remedios Escalada de San Martín — Sede Las Higueras. Built with React + TypeScript + Vite, Firebase Auth + Firestore, no routing library (sidebar with lazy loading), custom CSS.
+School management system for CEIJA N°12 Remedios Escalada de San Martín, sede Las Higueras (CUE 140512501, Combinada en Línea). React 19 + TypeScript + Vite, Firebase Auth + Firestore + Hosting. No Cloud Functions and no Cloud Storage: the free Spark plan is the target. The app is an internal tool. The official records remain the paper Libro Matriz and the SGE.
 
 **URL:** https://ceija12resm.web.app
 
-## Tech Stack
-- **Frontend:** React 19, TypeScript, Vite 8
-- **Backend:** Firebase Auth, Firestore, Firebase Hosting
-- **Auth:** Firebase Auth (email/password + Google)
-- **Styling:** Custom CSS (index.css), no frameworks
-- **Excel:** SheetJS (xlsx) for export/import
-- **Icons:** lucide-react
+## Tech stack
+- Frontend: React 19, TypeScript, Vite 8, custom CSS, lucide-react
+- Backend: Firebase Auth, Firestore. Business rules live in the client and in `firestore.rules`
+- Excel: SheetJS (`xlsx`)
+- Local checks: Firestore emulator + `@firebase/rules-unit-testing`
 
-## Architecture
+## Roles
+Stored on `users/{uid}.role`. Legacy values still work in the rules so existing accounts are not locked out the moment rules are deployed.
 
-### Auth Flow
-- `AuthContext.tsx` wraps entire app
-- Uses standalone `writeLog()` function (not hook) to avoid circular dependency
-- Custom admin sign-up via `fetch` to Identity Toolkit API (REST) since Firebase Admin SDK isn't available
-- User roles: `Administrador`, `Profesor`
-- Firestore `users` collection mirrors Auth users
-
-### Navigation
-- `DashboardLayout.tsx` renders sidebar with lazy-loaded sections via `useState` + conditional rendering
-- Sections: Usuarios, Estudiantes, Calificaciones, Planes, Estadísticas, Detalle del Estudiante, Mi Perfil
-
-### Data Layer
-- Custom hooks (not React Query): `useStudents`, `useSubjects`, `useGrades`, `useEquivalences`, `useStudyPlans`, `useLogs`, `useExport`
-- Each hook has CRUD operations returning `Promise<T>` directly
-- No global state manager — React state + props
-
-### Firestore Collections
-| Collection | Key Fields |
+| Stored value | Meaning |
 |---|---|
-| `users` | email, displayName, role, subjectIds, disabled |
-| `students` | apellido, nombre, dni, cuil, email, telefono, fechaNacimiento, estado, planInicial, planActual, cursado, gestion + StudentDocumentation fields |
-| `subjects` | nombre, modulo, planId |
-| `grades` | studentId, subjectId, nota, fecha, gestion |
-| `equivalences` | studentId, nombre, nota, fecha |
-| `studyPlans` | nombre, modulos, cuatrimestres |
-| `logs` | entity, entityId, action, userId, userEmail, userRole, timestamp, details |
+| `admin` or `Administrador` | Full access, including the private legajo |
+| `docente` or `Profesor` | Grades only on assigned espacios, open RAC |
+| `lectura` | Directory, RAC, equivalencias and pases, without sensitive columns |
+| `pendiente` | Signed in, no student data |
 
-## Key Design Decisions
+Self-registration (email or Google) always creates `pendiente`. Only an admin can change a role. A person cannot change their own role, `disabled`, or `activo`.
 
-### Logging
-- `writeLog()` standalone function for use inside AuthContext (no hook dependency)
-- `useLogs` hook for components inside provider
-- Entity types: user, student, grade, subject, studyPlan, equivalence
-- Actions: create, update, delete
-- History tab in StudentDetail only shows what actually changed (diff-based logging in `updateStudent`)
+Teacher assignments live in `docentes/{uid}`, not on the user document. Keys look like `planId|espacioId|anio`. Shared M8 (`compartidoM8`) can be replicated by a teacher marked `ensenaM8`.
 
-### Student Data Model
-- `StudentRecord = { id, apellido, nombre, dni, cuil, email, telefono, fechaNacimiento, estado, planInicial, planActual, cursado, gestion, createdAt, createdBy } & StudentDocumentation`
-- `StudentDocumentation`: paseProvisorio, paseDefinitivo, fotocopiaDni, cus, certificadoPrimaria, numeroEquivalencia, linkTitulo, documentacionCompleta, observaciones
-- Documentation stored flat on the student document (not subcollection)
+## Firestore model
+| Path | What it holds |
+|---|---|
+| `config/institucion` | Name, CUE, sede |
+| `ciclos/{anio}` | `abierto` or `cerrado` |
+| `planes/{planId}` | A/B/C, orientation, resolutions, version |
+| `planes/{planId}/espacios/{espacioId}` | Curricular space. M8 may be `compartidoM8` |
+| `estudiantes/{id}` | Name, masked DNI, plan, status. No full DNI or contact |
+| `estudiantes/{id}/privado/datos` | DNI, CUIL, contact, birth date, documentation. Admin only |
+| `dniIndex/{dni}` | One student per DNI. Create fails if it already exists |
+| `resumenes/estudiantes_{anio}` | Compact directory, one read |
+| `indices/{anio}_{planId}_{espacioId}` | Teacher sheet: name and masked DNI |
+| `rac/{estudianteId}_{anio}_{planId}` | One RAC. `abierto` or `cerrado` |
+| `rac/{racId}/calificaciones/{espacioId}` | Grade row: TPI, nota 1–10 step 0.50, letters, fecha mm/aa, condición |
+| `equivalencias/{id}` | Admin writes. Lectura can read. Applying one sets the RAC row to `Equiv` |
+| `pases/{id}` | Provisional pass expires 60 days after the date |
+| `logs/{id}` | Create only, and `uid` must be the signed-in user |
 
-### PDF/Print
-- No PDF library — `window.print()` + `@media print` CSS for printable grade reports
+`crearEstudianteConRac()` writes the DNI index, the public student, the private legajo, the RAC, one grade per space, the log, the summary and the per-space indexes in a single batch.
 
-### Bulk Import
-- Validates uniqueness of DNI, CUIL, email before creating
-- Preview table before confirming import
+Closing a RAC marks anything not approved as `adeuda` and makes grades read-only. "Generar RAC del ciclo siguiente" opens a RAC on the destination plan and carries failed spaces as `Prev`.
 
-### Subjects
-- `createDefaultSubjects` uses `writeBatch` for atomic batch writes
-- Plan-based: subjects belong to a study plan via `planId`
+Versioned sede plans are in `src/domain/planesSede.ts` (Plan A ciclo básico, Planes B and C Economía y Administración). Arte y Cultura and Deportes are not invented; an admin can add them from the planes screen.
 
-### Error Handling
-- Custom `getFirebaseErrorMessage(err, context)` with error context (signIn, signUp, resetPassword, signInWithGoogle, changePassword, generic)
-- Firestore REST API error codes mapped via `REST_ERROR_MAP`
-
-## Known Issues
-- No composite indexes in Firestore — queries avoid needing them (single-field queries + client-side sorting)
-- Equivalences `firestore.rules` without write protection (pending)
-- Seed script `seed-students.mjs` for testing
+## Legacy collections
+`students`, `grades` and `equivalences` stay readable and writable by admins only, until a migration runs. They are not the screens the app uses now. `students` holds DNI and contact, so teachers and lectura cannot read them.
 
 ## Commands
 ```bash
-npm run dev      # dev server
-npm run build    # tsc + vite build
-npx firebase deploy  # deploy to Firebase
+npm run dev
+npm run build
+npm run test:domain
+npm run test:rules
 ```
 
-## Test Users
-- Admin: admin@ceija.com / Admin123!
-- Prof: prof@ceija.com / Prof1234!
+`test:rules` starts the Firestore emulator on project `demo-ceija`. It does not touch `ceija12resm`.
+
+Do not deploy from an agent session. Hosting and rules deploy stay with the owner:
+
+```bash
+npx firebase deploy --only firestore:rules,hosting
+```
+
+## Seeds and migration
+- `seed-students.mjs` refuses to run. It used to sign in to the real project.
+- `scripts/seed-emulador.ts` writes fictitious people and only if the emulator host is localhost.
+- `scripts/migracion/` is a dry-run skeleton. It does not write, and it exits if the project is not a local `demo-` emulator.
+
+Exports (`.xlsx`, `.csv`) are gitignored. Sensitive Excel columns are an admin action with a confirmation dialog.
+
+## Still manual
+- Rotate or delete the old test accounts in the real Firebase project, then deploy the new rules together with the new hosting build.
+- Existing `Administrador` / `Profesor` documents keep working. New roles use `admin`, `docente`, `lectura`, `pendiente`. Re-save a teacher in Usuarios so `docentes/{uid}` gets their espacios.
+- App Check is not wired (Spark allows it later; it was left out of this change).
+- Real legajos are not loaded. The migration script is only the local skeleton described above.

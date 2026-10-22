@@ -28,7 +28,7 @@ const INITIAL_FORM: UserFormData = {
   email: '',
   password: '',
   displayName: '',
-  role: 'Profesor',
+  role: 'docente',
   subjectIds: [],
 };
 
@@ -48,7 +48,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
   const [loadingSubjects, setLoadingSubjects] = useState(false);
 
   const isEdit = mode === 'edit';
-  const isProfesor = form.role === 'Profesor';
+  const isProfesor = form.role === 'docente';
 
   useEffect(() => {
     clearError();
@@ -89,7 +89,7 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
   const handleChange = (field: keyof UserFormData, value: string) => {
     const upperFields: (keyof UserFormData)[] = ['displayName'];
     const updated = { ...form, [field]: upperFields.includes(field) ? value.toUpperCase() : value };
-    if (field === 'role' && value === 'Administrador') {
+    if (field === 'role' && value === 'admin') {
       updated.subjectIds = [];
     }
     setForm(updated);
@@ -223,8 +223,8 @@ export const UserFormModal = ({ mode, initialData, onClose, onSuccess }: UserFor
                   disabled={loading}
                   style={{ width: '100%', fontSize: '14px', padding: '14px 16px', borderRadius: 'var(--radius-input)' }}
                 >
-                  <option value="Profesor">Profesor</option>
-                  <option value="Administrador">Administrador</option>
+                  <option value="docente">Docente</option>
+                  <option value="admin">Administrador</option>
                 </select>
               </div>
             </div>

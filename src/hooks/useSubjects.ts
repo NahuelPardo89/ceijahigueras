@@ -72,7 +72,7 @@ export const useSubjects = () => {
   }, []);
 
   const createSubject = useCallback(async (data: CreateSubjectData) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para crear materias.');
       throw new Error('No autorizado');
     }
@@ -95,7 +95,7 @@ export const useSubjects = () => {
   }, [user, createLog]);
 
   const createDefaultSubjects = useCallback(async (planId: string) => {
-    if (!user || user.role !== 'Administrador') return;
+    if (!user || user.role !== 'admin') return;
     setLoading(true);
     setError(null);
     try {
@@ -138,7 +138,7 @@ export const useSubjects = () => {
   }, [user, createLog]);
 
   const updateSubject = useCallback(async (id: string, data: Partial<CreateSubjectData>) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para editar materias.');
       throw new Error('No autorizado');
     }
@@ -157,7 +157,7 @@ export const useSubjects = () => {
   }, [user, createLog]);
 
   const deleteSubject = useCallback(async (id: string) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para eliminar materias.');
       throw new Error('No autorizado');
     }

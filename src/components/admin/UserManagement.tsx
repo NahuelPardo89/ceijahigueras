@@ -12,7 +12,7 @@ import { useToast } from '../../context/ToastContext';
 export const UserManagement = () => {
   const { toast } = useToast();
   const { getAllUsers, updateUserRole, disableUser, user: currentUser } = useAuth();
-  const isAdmin = currentUser?.role === 'Administrador';
+  const isAdmin = currentUser?.role === 'admin';
   const [users, setUsers] = useState<UserRecord[]>([]);
   const [loadingUsers, setLoadingUsers] = useState(isAdmin);
   const [updating, setUpdating] = useState<string | null>(null);
@@ -171,7 +171,7 @@ export const UserManagement = () => {
 
               return (
                 <div key={u.uid} className={`user-row ${isSelf ? 'user-row-self' : ''} ${isDisabled ? 'user-row-disabled' : ''}`}>
-                  <div className={`user-avatar-mini ${u.role === 'Administrador' ? 'avatar-admin' : 'avatar-profesor'}`}
+                  <div className={`user-avatar-mini ${u.role === 'admin' ? 'avatar-admin' : 'avatar-profesor'}`}
                     style={isDisabled ? { opacity: 0.4 } : undefined}>
                     {initials}
                   </div>
@@ -181,7 +181,7 @@ export const UserManagement = () => {
                       {u.displayName || 'Sin nombre'}
                       {isSelf && <span className="self-tag">Tú</span>}
                       {isDisabled && <span className="badge-disabled">Deshabilitado</span>}
-                      {u.role === 'Profesor' && u.subjectIds && u.subjectIds.length > 0 && (
+                      {u.role === 'docente' && u.subjectIds && u.subjectIds.length > 0 && (
                         <span className="badge-subjects">{u.subjectIds.length} materias</span>
                       )}
                     </span>
@@ -197,8 +197,8 @@ export const UserManagement = () => {
                         onChange={e => handleRoleChange(u.uid, e.target.value as UserRole)}
                         aria-label={`Rol de ${u.displayName || u.email}`}
                       >
-                        <option value="Administrador">Administrador</option>
-                        <option value="Profesor">Profesor</option>
+                        <option value="admin">Administrador</option>
+                        <option value="docente">Docente</option>
                       </select>
                       <ChevronDown size={13} className="role-select-arrow" />
                       {updating === u.uid && (
@@ -207,7 +207,7 @@ export const UserManagement = () => {
                     </div>
 
                     <div className="role-badge-mini">
-                      {u.role === 'Administrador'
+                      {u.role === 'admin'
                         ? <ShieldCheck size={12} style={{ color: '#f59e0b' }} />
                         : <GraduationCap size={12} style={{ color: '#a78bfa' }} />
                       }

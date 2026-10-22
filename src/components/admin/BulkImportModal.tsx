@@ -90,7 +90,7 @@ export const BulkImportModal = ({ onClose }: Props) => {
   };
 
   const handleImport = async () => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       toast('Solo administradores pueden importar estudiantes.', 'error');
       return;
     }

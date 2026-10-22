@@ -100,7 +100,7 @@ export const useStudents = () => {
   }, []);
 
   const createStudent = useCallback(async (data: CreateStudentData) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para crear estudiantes.');
       throw new Error('No autorizado');
     }
@@ -125,7 +125,7 @@ export const useStudents = () => {
   }, [user, createLog]);
 
   const updateStudent = useCallback(async (id: string, data: Partial<CreateStudentData>) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para editar estudiantes.');
       throw new Error('No autorizado');
     }
@@ -154,7 +154,7 @@ export const useStudents = () => {
   }, [user, createLog]);
 
   const deleteStudent = useCallback(async (id: string) => {
-    if (!user || user.role !== 'Administrador') {
+    if (!user || user.role !== 'admin') {
       setError('No tienes permisos para eliminar estudiantes.');
       throw new Error('No autorizado');
     }

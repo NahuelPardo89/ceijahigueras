@@ -29,7 +29,7 @@ export const StudentManagement = () => {
   const { getAllStudents, deleteStudent, error: hookError } = useStudents();
   const { getSubjectsByPlan } = useSubjects();
   const { getGradesByStudent, deleteGrade: deleteGradeFn } = useGrades();
-  const isAdmin = user?.role === 'Administrador';
+  const isAdmin = user?.role === 'admin';
   const [students, setStudents] = useState<StudentRecord[]>([]);
   const [loadingData, setLoadingData] = useState(true);
   const [search, setSearch] = useState('');
@@ -571,7 +571,7 @@ export const StudentManagement = () => {
         <GradesFormModal
           student={gradesStudent}
           planId={gradesStudent.planId || ''}
-          subjects={user?.role === 'Profesor' && user.subjectIds
+          subjects={user?.role === 'docente' && user.subjectIds
             ? gradeModalSubjects.filter(s => user.subjectIds!.includes(s.id))
             : gradeModalSubjects
           }

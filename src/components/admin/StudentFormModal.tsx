@@ -39,7 +39,7 @@ export const StudentFormModal = ({ mode, initialData, onClose, onSuccess }: Stud
   const [plans, setPlans] = useState<StudyPlan[]>([]);
 
   const isEdit = mode === 'edit';
-  const isAdmin = user?.role === 'Administrador';
+  const isAdmin = user?.role === 'admin';
 
   useEffect(() => {
     getAllPlans().then(setPlans).catch(() => {});

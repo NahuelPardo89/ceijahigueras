@@ -32,7 +32,7 @@ export const StudyPlanFormModal = ({ mode, initialData, onClose, onSuccess }: St
   const [localError, setLocalError] = useState<string | null>(null);
 
   const isEdit = mode === 'edit';
-  const isAdmin = user?.role === 'Administrador';
+  const isAdmin = user?.role === 'admin';
 
   const handleChange = (field: keyof CreateStudyPlanData, value: string | number) => {
     setForm(prev => ({ ...prev, [field]: value }));

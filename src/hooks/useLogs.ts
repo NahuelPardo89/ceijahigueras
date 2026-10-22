@@ -4,7 +4,7 @@ import { db } from '../firebase/config';
 import { useAuth } from './useAuth';
 
 export type LogAction = 'create' | 'update' | 'delete';
-export type LogEntity = 'user' | 'student' | 'grade' | 'subject' | 'studyPlan' | 'equivalence';
+export type LogEntity = 'user' | 'student' | 'grade' | 'subject' | 'studyPlan' | 'equivalence' | 'estudiante' | 'rac' | 'calificacion' | 'equivalencia' | 'pase' | 'ciclo' | 'plan';
 
 export interface LogEntry {
   id?: string;
@@ -25,12 +25,17 @@ export const writeLog = async (
   entry: { action: LogAction; entity: LogEntity; entityId: string; details?: Record<string, unknown> }
 ) => {
   try {
+    const timestamp = new Date().toISOString();
     await addDoc(collection(db, 'logs'), {
       ...entry,
-      timestamp: new Date().toISOString(),
+      entidad: entry.entity,
+      accion: entry.action,
+      timestamp,
+      uid: userId,
       userId,
       userEmail,
       userRole,
+      diff: entry.details ?? {},
     });
   } catch (err) {
     console.error('Error creando log:', err);
@@ -47,12 +52,17 @@ export const useLogs = () => {
     setLoading(true);
     setError(null);
     try {
+      const timestamp = new Date().toISOString();
       await addDoc(collection(db, 'logs'), {
         ...entry,
-        timestamp: new Date().toISOString(),
+        entidad: entry.entity,
+        accion: entry.action,
+        timestamp,
+        uid: user.uid,
         userId: user.uid,
         userEmail: user.email,
         userRole: user.role,
+        diff: entry.details ?? {},
       });
     } catch (err) {
       console.error('Error creando log:', err);
