@@ -242,7 +242,7 @@ export const EstudiantesPanel = () => {
                   )}
                 </tr>
               ))}
-              {filtrados.length === 0 && <tr><td colSpan={7}>No hay estudiantes en este ciclo. Si todavía no cargaste los planes, hazlo en Planes y espacios.</td></tr>}
+              {filtrados.length === 0 && <tr><td colSpan={7}>No hay estudiantes en este ciclo.</td></tr>}
             </tbody>
           </table>
         </div>

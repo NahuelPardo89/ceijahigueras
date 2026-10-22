@@ -30,8 +30,12 @@ Teacher assignments live in `docentes/{uid}`, not on the user document. Keys loo
 |---|---|
 | `config/institucion` | Name, CUE, sede |
 | `ciclos/{anio}` | `abierto` or `cerrado` |
-| `planes/{planId}` | A/B/C, orientation, resolutions, version |
-| `planes/{planId}/espacios/{espacioId}` | Curricular space. M8 may be `compartidoM8` |
+| `planesEstudio/{planId}` | Admin-built plan: resolución, orientación, validez nacional. Starts empty |
+| `planesEstudio/{planId}/niveles/{nivelId}` | Level the admin names (A = 1°, B = 2°, C = 3°, or another code) |
+| `planesEstudio/.../modulos/{moduloId}` | Module inside a level |
+| `planesEstudio/.../materias/{materiaId}` | Subject. Opaque id, area, optional code `n.m`. This id is what a grade row should keep |
+| `planes/{planId}` | Older plan still read by RAC and the teacher sheet. The new screen does not seed it |
+| `planes/{planId}/espacios/{espacioId}` | Older space. Existing grade rows still use this id |
 | `estudiantes/{id}` | Name, masked DNI, plan, status. No full DNI or contact |
 | `estudiantes/{id}/privado/datos` | DNI, CUIL, contact, birth date, documentation. Admin only |
 | `dniIndex/{dni}` | One student per DNI. Create fails if it already exists |
@@ -47,7 +51,7 @@ Teacher assignments live in `docentes/{uid}`, not on the user document. Keys loo
 
 Closing a RAC marks anything not approved as `adeuda` and makes grades read-only. "Generar RAC del ciclo siguiente" opens a RAC on the destination plan and carries failed spaces as `Prev`.
 
-Versioned sede plans are in `src/domain/planesSede.ts` (Plan A ciclo básico, Planes B and C Economía y Administración). Arte y Cultura and Deportes are not invented; an admin can add them from the planes screen.
+Planes de Estudio starts empty. An admin types resolución, orientación and validez nacional, then levels, modules and subjects. `src/domain/planesSede.ts` is not a seed for that screen. It still feeds the older `planes` collection used by the RAC, the teacher sheet and the local emulator seed, so existing grade rows keep their id.
 
 ## Legacy collections
 `students`, `grades`, `equivalences`, `subjects` and `studyPlans` are admin **read-only**. Nobody can create, update or delete them from the client. The app no longer ships the old screens or hooks (`StudentManagement`, `GradesManagement`, `SubjectManagement`, `StudyPlanManagement`, `BulkImportModal`, `useStudents`, `useGrades`, `useSubjects`, `useStudyPlans`, `useEquivalences`). `students` still holds DNI and contact, so teachers and lectura cannot read them.
