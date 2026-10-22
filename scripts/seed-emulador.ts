@@ -7,7 +7,6 @@ import { readFileSync } from 'node:fs';
 import { initializeTestEnvironment } from '@firebase/rules-unit-testing';
 import { doc, setDoc } from 'firebase/firestore';
 import { PLANES_SEDE } from '../src/domain/planesSede.ts';
-import { armarDocente } from '../src/domain/claves.ts';
 import { cargarPlanesSede, crearCiclo, crearEstudianteConRac, guardarAsignaciones } from '../src/services/escolar.ts';
 
 const hostFirestore = process.env.FIRESTORE_EMULATOR_HOST ?? '';

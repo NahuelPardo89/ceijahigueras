@@ -7,16 +7,18 @@
     "dev": "vite",
     "build": "tsc -b && vite build",
     "lint": "eslint .",
+    "typecheck": "tsc -b --pretty false && tsc -p tsconfig.scripts.json --pretty false --noEmit",
     "preview": "vite preview",
-    "test:domain": "tsx --test tests/domain.test.ts",
-    "test:rules": "firebase emulators:exec --project demo-ceija --only firestore \"tsx --test tests/reglas-y-rac.test.ts\""
+    "test:domain": "tsx --test tests/domain.test.ts tests/excel.test.ts tests/migracion.test.ts",
+    "test:rules": "firebase emulators:exec --project demo-ceija --only firestore \"tsx --test tests/reglas-y-rac.test.ts && tsx --test tests/migracion-emulador.test.ts\"",
+    "test:migracion": "firebase emulators:exec --project demo-ceija --only firestore \"tsx --test tests/migracion-emulador.test.ts\""
   },
   "dependencies": {
     "firebase": "^12.14.0",
     "lucide-react": "^1.17.0",
     "react": "^19.2.6",
     "react-dom": "^19.2.6",
-    "xlsx": "^0.18.5"
+    "xlsx": "https://cdn.sheetjs.com/xlsx-0.20.3/xlsx-0.20.3.tgz"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

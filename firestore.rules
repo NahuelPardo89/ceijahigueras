@@ -336,28 +336,33 @@ service cloud.firestore {
       allow update, delete: if false;
     }
 
-    // Colecciones anteriores. Quedan solo para el administrador hasta la migración.
-    // students contiene DNI y contacto: nadie más puede leerlas.
+    // Colecciones anteriores (students, grades, equivalences, subjects, studyPlans).
+    // Solo el administrador puede leerlas. Nadie puede escribir: la migración
+    // copia al modelo nuevo y estas reglas no permiten pisar ni borrar el legado.
+    // students guarda DNI y contacto.
     match /students/{studentId} {
-      allow read, create, update, delete: if esAdmin();
+      allow read: if esAdmin();
+      allow create, update, delete: if false;
     }
 
     match /grades/{gradeId} {
-      allow read, create, update, delete: if esAdmin();
+      allow read: if esAdmin();
+      allow create, update, delete: if false;
     }
 
     match /equivalences/{eqId} {
-      allow read, create, update, delete: if esAdmin();
+      allow read: if esAdmin();
+      allow create, update, delete: if false;
     }
 
     match /subjects/{subjectId} {
-      allow read: if esStaff();
-      allow create, update, delete: if esAdmin();
+      allow read: if esAdmin();
+      allow create, update, delete: if false;
     }
 
     match /studyPlans/{planId} {
-      allow read: if esStaff();
-      allow create, update, delete: if esAdmin();
+      allow read: if esAdmin();
+      allow create, update, delete: if false;
     }
   }
 }
