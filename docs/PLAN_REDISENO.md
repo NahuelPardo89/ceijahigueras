@@ -3,7 +3,7 @@
 Documento de planificación. No implementa pantallas, no cambia reglas y no se despliega.
 No toca el proyecto Firebase real (`ceija12resm`). No hay datos personales: los ejemplos son esquemas, no personas.
 
-Fecha del relevamiento de Drive que usa este plan: 22/10/2026. La app vive en https://ceija12resm.web.app y el registro oficial sigue siendo el Libro Matriz en papel y el SGE. Esta herramienta es de trabajo interno de la sede.
+Fecha del relevamiento de Drive que usa este plan: 22/10/2026. Actualizado el mismo día con las respuestas de Nahuel sobre planes, asistencia y bajas. La app vive en https://ceija12resm.web.app y el registro oficial sigue siendo el Libro Matriz en papel y el SGE. Esta herramienta es de trabajo interno de la sede.
 
 ## 1. Qué hay que lograr
 
@@ -61,62 +61,77 @@ Sin copiar filas de personas:
 - Formularios de solicitudes y de inscripción a exámenes: quedan en Forms. Este plan no los reemplaza.
 - Problemas de calidad que la importación tiene que dejar en una cola, no adivinar: DNI duplicados, DNI vacíos, DNI no numéricos, edad calculada mal (no se importa la edad), códigos de plan ilegibles, cruce de VIRTUALES solo por nombre.
 
-### 2.4. La contradicción que traba el modelo
+### 2.4. Qué significan A, B y C
 
-Hay tres hipótesis sobre A, B y C:
+Nahuel lo cerró: en esta modalidad, A, B y C son la forma en que se arma el cursado. **Plan A es 1° año, Plan B es 2° y Plan C es 3°.** No son cohortes ni turnos.
 
-| Fuente | Qué dice |
-|---|---|
-| RAC 2026 | Las cuatro pestañas imprimen los mismos 42 rótulos. Puede ser la trayectoria completa, o puede ser una plantilla copiada. |
-| Página pública y resoluciones citadas ahí | A, B y C son 1°, 2° y 3° de Economía y Administración. Cada año cursa un tramo de módulos, y el M8 se arrastra. |
-| `planesSede.ts` | También trata A/B/C como años, pero con otra lista de espacios y otros números de módulo. |
+Eso no autoriza a precargar nada. Las listas de `planesSede.ts`, las de la página pública y los 42 rótulos del RAC 2026 son referencias para quien tipee el plan, no una semilla. La pantalla actual (`PlanesPanel`) tiene un botón que llama a `cargarPlanesSede()` y escribe esos seis espacios por año: en el rediseño ese botón y ese arranque automático desaparecen. La colección de planes empieza vacía.
 
-Este plan **no elige la currícula**. Elige una forma de guardarla para que la respuesta de Nahuel sea un dato, no una reescritura.
-
-Hipótesis de trabajo, marcada como tal hasta que Nahuel responda: los 42 códigos son el catálogo; cada plan es un subconjunto; `B2026` es "plan B, cohorte 2026"; VIRTUALES es la modalidad virtual, no un cuarto plan; la celda `PLAN B` en una nota significa "acreditado en el otro plan". Si la respuesta dice lo contrario, se cambia el subconjunto del plan y no la clave de las notas.
+La celda `PLAN B` o `PLAN C` dentro de una nota del RAC sigue significando "ya acreditado en otro año del plan", no un cambio de currícula. VIRTUALES sigue siendo una duda de modalidad (pregunta 4), no un cuarto año.
 
 ## 3. Decisiones recomendadas
 
 1. Evolucionar el modelo nuevo. No crear colecciones paralelas `alumnos` / `calificaciones` sueltas: se perderían el legajo privado, el `dniIndex` y las reglas ya probadas.
-2. Separar tres cosas que hoy están mezcladas en la palabra "RAC":
-   - **Catálogo**: los 42 códigos, estables.
-   - **Ciclo**: lo que este estudiante cursa este año, en un plan, y lo que el docente edita.
-   - **Acreditación**: la nota que ya quedó (el casillero de la matriz histórica). Una por estudiante y código.
-3. La planilla del docente lee y escribe filas chicas, una por estudiante. No un arreglo gigante y no una lectura por nota.
-4. Los archivos no entran a Firebase. Solo URLs de una lista blanca, en el legajo privado.
-5. Seguir en Spark. Blaze no se justifica con el uso de la sede (sección 8).
-6. Sistema de componentes en el repo (sección 7). No un skill genérico de "hacerlo lindo".
-7. La importación real la corre Nahuel, en su computadora, cuando las fases anteriores estén aceptadas. Un agente no despliega ni escribe en `ceija12resm`.
-8. Libro Matriz y SGE siguen siendo la fuente oficial. La app no emite títulos ni reemplaza Gestión Estudiantes: solo registra el estado de carga (`GESTION E`) como dato de secretaría.
+2. La currícula es configurable por el admin y **no se siembra**. El menú se llama Planes de Estudio. Un plan de estudio tiene Resolución, Orientación y Validez Nacional; adentro, quien administra carga los niveles (A = 1°, B = 2°, C = 3°, u otro código si más adelante hace falta), y en cada nivel los módulos y las materias.
+3. Separar tres cosas que hoy están mezcladas en la palabra "RAC":
+   - **Plan de estudio**: lo que el admin cargó (niveles, módulos, materias).
+   - **Ciclo**: las materias de ese nivel, este año, que el docente edita.
+   - **Acreditación**: la materia aprobada, permanente. Una por estudiante y materia. No se borra con la baja ni con el cierre.
+4. La planilla del docente lee y escribe filas chicas, una por estudiante. No un arreglo gigante y no una lectura por nota. Quien está de baja no tiene fila.
+5. Los archivos no entran a Firebase. Solo URLs de una lista blanca, en el legajo privado.
+6. No hay asistencia. Quedó fuera de alcance.
+7. Seguir en Spark. Blaze no se justifica con el uso de la sede (sección 8).
+8. Sistema de componentes en el repo (sección 7). No un skill genérico de "hacerlo lindo".
+9. La importación real la corre Nahuel, en su computadora, cuando las fases anteriores estén aceptadas. Un agente no despliega ni escribe en `ceija12resm`.
+10. Libro Matriz y SGE siguen siendo la fuente oficial hasta que Nahuel diga otra cosa (pregunta 8). La app no emite títulos ni reemplaza Gestión Estudiantes: solo registra el estado de carga (`GESTION E`) como dato de secretaría.
 
 ## 4. Modelo de datos
 
 Identificadores opacos (`estudiantes/{id}` autogenerado). El DNI no es el id del estudiante: va solo al índice y al privado. Así un DNI mal cargado se corrige sin mudarlo de documento.
 
-### 4.1. Catálogo
+### 4.1. Planes de Estudio
 
-`catalogoEspacios/{codigo}` con código `1.1` … `9.2` (punto, tal como está en el RAC):
+No hay catálogo global precargado. No se escribe `PLANES_SEDE` al abrir la app ni desde un botón. Arte y Cultura, Deportes, los 42 rótulos del RAC y los seis espacios de `planesSede.ts` no entran solos: si existen en la sede, el admin los tipea.
 
-| Campo | Ejemplo de forma |
-|---|---|
-| `codigo` | `1.3` |
-| `nombre` | Matemática |
-| `modulo` | `1` a `9` |
-| `orden` | entero para ordenar dentro del módulo |
-| `area` | Lengua, Inglés, Matemática, Cs. Naturales, Cs. Sociales, ATP, Orientación |
-| `tipo` | `EC` o `ATP` |
-| `version` | entero. La versión 1 es la de los rótulos del RAC 2026, todavía sin validar contra la resolución |
-
-`planes/{planId}`:
+`planesEstudio/{planEstudioId}`:
 
 | Campo | Uso |
 |---|---|
-| `codigo` | `A`, `B`, `C`, u otro que secretaría cree (Arte y Cultura y Deportes no se inventan) |
-| `nombre`, `ciclo` (`CB`/`CO`), `orientacion`, resoluciones, `version`, `activo` | Como ahora |
-| `espaciosIds` | lista ordenada de códigos del catálogo. **Vacía o marcada `borrador` hasta la respuesta de Nahuel.** No sembrar los seis espacios actuales como si fueran la verdad |
-| `compartidos` | códigos que se replican entre planes (hoy el M8). Sigue siendo explícito, no mágico |
+| `orientacion` | Obligatoria. Es el título de la fila en el listado. |
+| `resolucion` | Obligatoria. Texto que carga el admin (número y año, o el texto que use la sede). |
+| `validezNacional` | Obligatoria. Texto libre; la app no valida un formato de resolución nacional. |
+| `activo` | Si está en false, no se ofrecen para un alta nueva. Los RAC ya abiertos siguen leyéndose. |
+| `creadoPor`, `fechaCreacion` | uid e ISO. |
 
-El M8 compartido se mantiene: si el docente marca la nota en un plan y la regla lo autoriza, el cliente copia el parche a los otros RAC abiertos del mismo estudiante que tengan ese código. La regla ya lo acota; no se afloja.
+Nada más en el alta. El nombre no se pide aparte: en la lista se ve la orientación y la resolución.
+
+`planesEstudio/{planEstudioId}/niveles/{nivelId}`:
+
+| Campo | Uso |
+|---|---|
+| `codigo` | El que escriba el admin. En esta modalidad, A, B y C. No es un enum cerrado: otro plan puede usar otro código. |
+| `anioCurso` | Entero. A = 1, B = 2, C = 3. Lo carga quien crea el nivel; la app no inserta los tres sola. |
+| `nombre` | Por ejemplo "1° año". |
+| `orden` | Para pasar de un nivel al siguiente. |
+
+`planesEstudio/{planEstudioId}/niveles/{nivelId}/modulos/{moduloId}`: `nombre`, `orden`.
+
+`.../modulos/{moduloId}/materias/{materiaId}`:
+
+| Campo | Uso |
+|---|---|
+| `nombre` | El que se imprime y el que ve el docente. |
+| `orden` | Orden dentro del módulo. |
+| `codigo` | Opcional. Si el admin escribe `1.3`, la importación puede cruzar con el rótulo del RAC. Vacío si no lo necesitan. |
+| `comparteEntreNiveles` | Booleano, default false. Reemplaza al M8 fijo: si está en true, una nota aprobada se copia a los otros RAC abiertos del mismo estudiante que tengan una materia con el mismo `codigo` y este flag. Si el código está vacío, no se comparte. |
+| `activo` | Default true. En false no entra en los RAC nuevos. |
+| `enUso` | Pasa a true con la primera calificación. A partir de ahí la materia no se borra. |
+
+El id de la materia es opaco y no cambia aunque le corrijan el nombre. La calificación y la acreditación apuntan a ese id. El nombre se copia en la nota al crear el RAC, para que una edición posterior no reescriba la historia.
+
+Borrar un módulo o un nivel solo si ninguna materia hija tiene `enUso`. Si ya hay notas, se desactiva. La regla prohíbe el delete cuando `enUso` es true. No hace falta un contador en otro documento.
+
+Un RAC se puede abrir solo si el nivel tiene al menos una materia activa. Un plan recién creado, sin niveles, sirve para guardarlo y seguir editándolo; no sirve para inscribir.
 
 ### 4.2. Estudiante
 
@@ -126,9 +141,10 @@ El M8 compartido se mantiene: si el docente marca la nota en un plan y la regla 
 |---|---|
 | `apellido`, `nombre` | Texto limpio (sin tabs, espacios simples). No se guarda la edad. |
 | `dniEnmascarado` | Como ahora (`**.***.482` es la forma, no un dato real). |
-| `estado` | `activo`, `baja`, `egresado`, `pase`. El motivo de la baja queda abierto (pregunta 3). |
-| `modalidad` | `semipresencial` o `virtual`. Reemplaza la pestaña VIRTUALES. |
-| `planActualId` | Plan en el que está hoy. |
+| `estado` | `activo`, `baja`, `egresado`, `pase`. La baja está definida en 4.2.1. |
+| `fechaBaja` | ISO `aaaa-mm-dd`, o vacío si no está de baja. La ve también lectura, junto con el estado. Sin motivo. |
+| `modalidad` | `semipresencial` o `virtual`. Reemplaza la pestaña VIRTUALES si la pregunta 4 lo confirma. |
+| `planEstudioId`, `nivelActualId` | El plan de estudio y el nivel (A, B o C) en el que está hoy. |
 | `cohorteAnio` | El año de `B2026`, no la letra. |
 | `gestionSge` | `cargado`, `no_cargado`, `pase_solicitado`, `pase_invalido`. Es el estado en Gestión Estudiantes, no el estado académico. |
 | `documentacionResumen` | `completa`, `incompleta`, `sin_revisar`. Sin links. Para que lectura vea el semáforo. |
@@ -146,7 +162,36 @@ No se guarda `edad`. Doce edades en 126 en la planilla son una fórmula sobre un
 
 `dniIndex/{dni}` — solo dígitos, 7 u 8. Crear si no existe. No se actualiza. Corregir un DNI es una operación de admin: crear la clave nueva y borrar la vieja, las dos en reglas, con log que guarda el DNI enmascarado y no el completo. Hoy la regla prohíbe update y delete: hay que abrir solo el delete de admin para este caso, no un update libre.
 
-Quien no tiene DNI válido (vacío, "sin DNI", número con texto) **no entra** al índice ni a la planilla. Queda en `revisiones/{id}` (sección 6) hasta que secretaría lo resuelva.
+Quien no tiene DNI válido (vacío, "sin DNI", número con texto) **no entra** al índice ni a la planilla. Queda en `revisiones/{id}` (sección 4.8) hasta que secretaría lo resuelva.
+
+#### 4.2.1. Baja
+
+La marca la solo el admin, desde la ficha. Docente y lectura no la cambian.
+
+| Dónde | Qué se guarda |
+|---|---|
+| `estudiantes/{id}.estado` | `baja` |
+| `estudiantes/{id}.fechaBaja` | El día que carga el admin. Default: hoy. |
+| `estudiantes/{id}/bajas/{bajaId}` | Solo admin. `fecha`, `motivo` (texto corto, obligatorio), `uid`, `fechaReactivacion` vacía hasta que vuelva. No se borra. |
+
+Efecto, en el mismo batch:
+
+- Se borra la fila de ese estudiante en cada `indices/.../filas/{estudianteId}` de los RAC abiertos. Por eso desaparece de la planilla del docente. No queda una fila oculta.
+- No se borra ninguna `calificaciones` ni ninguna `acreditaciones`.
+- Cada materia de un RAC abierto que ya esté aprobada (nota ≥ 6, equivalencia, u otro plan) y todavía no tenga acreditación, se copia a `acreditaciones` en ese mismo batch. Aprobar y darse de baja el mismo día no pierde la materia.
+- Lo que sigue pendiente queda en el RAC, fuera de la planilla, para consulta de admin y lectura.
+- El resumen del padrón actualiza el estado. El directorio sigue encontrando a la persona, con la marca Baja. El filtro de secretaría arranca en Activos.
+- El log anota la baja con apellido, nombre y DNI enmascarado. El motivo no va al log.
+
+Reactivación, también solo admin, con confirmación:
+
+- `estado` vuelve a `activo`, `fechaBaja` queda vacía, y el documento de `bajas/{bajaId}` recibe `fechaReactivacion` y el uid. El episodio no se pisa ni se borra.
+- Se vuelven a crear filas de planilla solo para las materias del RAC abierto que **no** tienen acreditación. Una materia aprobada no vuelve a la grilla del docente: queda acreditada para siempre y no se recursa.
+- Los RAC cerrados no se tocan.
+
+La regla acompaña al cliente: el docente no puede crear una fila de índice si `get` del estudiante dice `estado == 'baja'`. Nadie puede borrar calificaciones ni acreditaciones. Una acreditación ya creada no acepta update (sección 4.5).
+
+El color rojo del RAC de Drive no se puede leer. Esas bajas viejas no entran solas con la importación: secretaría las marca a mano, si las recuerda, después de cargar el padrón. A partir de la app, la baja es este campo.
 
 ### 4.3. Documentos, solo links
 
@@ -169,7 +214,7 @@ Hosts permitidos, y ningún otro:
 
 La regla rechaza otro host, rechaza `http`, y rechaza cualquier string que parezca una ruta de Storage. Celda vacía de la planilla → `sin_revisar`, no `adeuda`. `ADEUDA` → `adeuda` con URL vacía. `SI` sin URL → `presentado` con `detalle` que avisa que falta el link. No se inventa un archivo.
 
-El semáforo público se recalcula en el mismo batch: si falta algún tipo obligatorio en `presentado` o `no_corresponde`, el resumen queda `incompleta`. Qué tipos son obligatorios es pregunta para Nahuel; hasta entonces el semáforo mira DNI, primaria, CUS y pase, y el título solo cuando el estado es `egresado`.
+El semáforo público se recalcula en el mismo batch: si falta algún tipo obligatorio en `presentado` o `no_corresponde`, el resumen queda `incompleta`. Qué tipos son obligatorios sigue abierto (pregunta 3). Hasta entonces el semáforo mira DNI, primaria, CUS y pase, y el título solo cuando el estado es `egresado`.
 
 La equivalencia no es un documento escaneado. Es un acto (sección 4.6). El número `nnn/aaaa` vive ahí.
 
@@ -177,51 +222,57 @@ La equivalencia no es un documento escaneado. Es un acto (sección 4.6). El núm
 
 `ciclos/{anio}`: `abierto` o `cerrado`, como ahora.
 
-`rac/{estudianteId}_{anio}_{planId}`: un RAC por estudiante, año y plan. Campos actuales (`estado`, apellido, nombre, `resumen`) más `modalidad`.
+`rac/{estudianteId}_{anio}_{nivelId}`: un RAC por estudiante, año lectivo y nivel. Guarda también `planEstudioId`. Campos actuales (`estado`, apellido, nombre, `resumen`) más `modalidad`.
 
-`rac/{racId}/calificaciones/{codigo}`: **solo los códigos que el plan incluye para ese ciclo**, no las 42 filas vacías.
+`rac/{racId}/calificaciones/{materiaId}`: **solo las materias activas de ese nivel**, no una fila vacía por cada materia del plan de estudio completo.
 
 | Campo | Notas |
 |---|---|
-| `espacioId` | El código `1.3`, igual al id del documento |
-| `nombre`, `modulo`, `orden` | Copiados del catálogo al crear, para imprimir aunque el catálogo cambie de versión |
+| `materiaId` | Igual al id del documento. Apunta a la materia que cargó el admin. |
+| `nombre`, `modulo`, `orden`, `codigo` | Copiados de la materia al crear el RAC, para imprimir aunque después le cambien el nombre. |
 | `notaFinal` | `null` o número de 1 a 10 de a medio punto |
 | `notaLetras` | Derivada, como ahora |
 | `fecha` | ISO `aaaa-mm-dd`, o vacía. Se deja de usar `mm/aa` como único formato: el RAC histórico tiene día, y el Libro también. En la impresión se puede mostrar `dd/mm/aa` |
 | `condicion` | `Reg`, `Prev`, `Equiv`, `Lib`, `Aus`, `OtroPlan` |
-| `planAcreditadoId` | Solo si `condicion` es `OtroPlan` (la celda decía `PLAN B`) |
-| `tpi` | Se mantiene el campo por compatibilidad, oculto en la grilla rápida. Ver pregunta 5: hoy una nota ≥ 6 no queda `aprobado` si el TPI no es `APROBADO`. Eso hay que invertirlo si secretaría confirma que manda la nota |
+| `nivelAcreditadoId` | Solo si `condicion` es `OtroPlan` (la celda decía `PLAN B`, o sea otro año). |
+| `tpi` | Se mantiene el campo por compatibilidad, oculto en la grilla rápida. Ver pregunta 2: hoy una nota ≥ 6 no queda `aprobado` si el TPI no es `APROBADO`. Eso hay que invertirlo si secretaría confirma que manda la nota. |
 | `estado` | `pendiente`, `aprobado`, `adeuda` |
 | `docenteUid`, `actaNro`, `compartidoM8`, `m8RacIds` | Como ahora |
 | `actualizadoEn` | Para el autoguardado y para ver quién pisó a quién |
 
-Nota de aprobación de trabajo: **6**, que es lo que ya dicen el código y la página pública. Sigue abierto contra la Res. 001/2020 (pregunta 4).
+Nota de aprobación de trabajo: **6**, que es lo que ya dicen el código y la página pública. Sigue abierto contra la Res. 001/2020 (pregunta 1).
 
 `Aus` no lleva número. `OtroPlan` no se edita en la planilla del docente: lo carga admin o la importación. `Equiv` la escribe el flujo de equivalencias, no el teclado de notas.
 
 Al aprobar, el mismo batch del cliente copia la acreditación (4.5). Las reglas no confían en el cliente: la acreditación solo entra si un `get` de la calificación muestra la misma nota, el mismo docente y el RAC abierto (sección 9).
 
-### 4.5. Acreditación (la matriz histórica)
+### 4.5. Acreditación permanente
 
-`acreditaciones/{estudianteId}_{codigo}` — una por persona y espacio.
+`acreditaciones/{estudianteId}_{materiaId}` — una por persona y materia. Es el registro que sobrevive a la baja, al cierre del RAC y al cambio de nivel.
 
-`notaFinal`, `fecha`, `condicion`, `planId` donde se cursó, `anio`, `racId` de origen, `docenteUid`, `equivalenciaId` si aplica, `estado`.
+`notaFinal`, `fecha`, `condicion`, `planEstudioId`, `nivelId`, `materiaId`, `nombre` copiado, `anio`, `racId` de origen, `docenteUid`, `equivalenciaId` si aplica.
 
-Si el mismo código aparece dos veces (RAC 2024 y RAC 2026), gana la acreditación ya guardada y la otra va a la cola de revisión. No se pisa en silencio. El RAC 2026 se importa primero justamente porque ya es la acumulación.
+Se crea cuando la materia queda aprobada (nota de aprobación, equivalencia, u otro nivel) y también en el batch de la baja para lo que ya estuviera aprobado. A partir de ese create:
 
-La pantalla de trayectoria arma las 42 filas en memoria: catálogo + acreditación + fila del ciclo abierto. Lo que no tiene documento se muestra como "no cursado" o como "pendiente" según el código esté o no en el plan actual. No hace falta un documento vacío por casillero (500 × 42 escrituras al pedo, y un cierre de ciclo que se come el cupo diario de Spark).
+- `allow update, delete: if false` para todo el mundo, admin incluido.
+- La nota, la fecha y la condición no se reescriben. Una corrección posterior es otro documento, `acreditaciones/{id}/rectificaciones/{rectId}`, solo admin, que cita el motivo y la nota correcta. El original queda.
+- Volver a cursar esa materia no está previsto: la reactivación no la pone en la planilla.
+
+Si el mismo par estudiante + materia aparece dos veces en la importación (RAC 2024 y RAC 2026), gana la acreditación ya guardada y la otra va a la cola de revisión. No se pisa en silencio. El RAC 2026 se importa primero justamente porque ya es la acumulación.
+
+La pantalla de trayectoria arma las filas en memoria con las materias que el admin cargó en ese plan de estudio (todos los niveles), más la acreditación y la fila del ciclo abierto. Lo que no tiene documento se muestra como "no cursada" o como "pendiente" según la materia pertenezca o no al nivel actual. No se guardan casilleros vacíos: alcanza con las materias de verdad, y un cierre no escribe de más (sección 8).
 
 ### 4.6. Equivalencias y pases
 
 `equivalencias/{id}` se mantiene, con estos ajustes:
 
-- `espacioId` pasa a ser el código `n.m`, no un texto libre.
+- `materiaId` apunta a una materia que el admin ya cargó. Si la importación trae un texto libre y ninguna materia tiene ese `codigo`, va a la cola. No se crea la materia sola.
 - `numero` con forma `nnn/aaaa` (el de LEGAJOS y el de la planilla histórica).
 - `estado`: `verificada` o `falta_asentar`.
 - `nota` ≥ 6 y de a medio punto, como ya exige la regla.
 - Al asentar, se marca la calificación del RAC abierto como `Equiv` / `aprobado` y se escribe la acreditación.
 
-Los nombres históricos ("MATEMATICA PLAN A", "AREA TECNICO PROFESIONAL 2") no se adivinan. Una tabla de alias, sin personas, propone el código; lo que no matchea queda en la cola.
+Los nombres históricos ("MATEMATICA PLAN A", "AREA TECNICO PROFESIONAL 2") no se adivinan. Una tabla de alias, sin personas, propone la materia cuyo `codigo` coincida; lo que no matchea queda en la cola. No se da de alta la materia desde el importador.
 
 `pases/{id}` se mantiene: ingreso o egreso, provisorio, definitivo, vencimiento a 60 días, alerta a 15 días (`src/domain/alertas.ts`). Sigue siendo cálculo en el cliente, sin función programada. El formulario de solicitudes de Drive no se lee por API: secretaría carga el pase a mano, como ahora.
 
@@ -231,9 +282,11 @@ Hoy `indices/{año}_{plan}_{espacio}` guarda un arreglo `filas` y después la pa
 
 Reemplazar el arreglo por subdocumentos:
 
-`indices/{anio}_{planId}_{codigo}/filas/{estudianteId}`
+`indices/{anio}_{nivelId}_{materiaId}/filas/{estudianteId}`
 
-Cada fila trae, para que la regla no tenga que hacer `get` del padre en un listado: `planId`, `espacioId`, `anio`, `racId`, `estudianteId`, `apellido`, `nombre`, `dniEnmascarado`, `notaFinal`, `fecha`, `condicion`, `estado`, `tpi`, `racAbierto`.
+Cada fila trae, para que la regla no tenga que hacer `get` del padre en un listado: `planEstudioId`, `nivelId`, `materiaId`, `anio`, `racId`, `estudianteId`, `apellido`, `nombre`, `dniEnmascarado`, `notaFinal`, `fecha`, `condicion`, `estado`, `tpi`, `racAbierto`.
+
+No existe la fila si el estudiante está de baja. La consulta del docente no tiene que filtrar bajas a ojo: el documento no está. Si alguien igual intenta crearla, la regla hace `get` del estudiante y rechaza `estado == 'baja'`.
 
 Abrir la planilla es **una consulta** filtrada por plan, espacio y año (las reglas de listado solo pueden mirar `resource.data`, no otro documento). Guardar es un batch de dos documentos: la calificación (fuente) y esta fila (copia para la grilla). Si la copia falla, la fuente quedó bien y la próxima apertura puede reconstruir; se muestra el error igual.
 
@@ -245,13 +298,14 @@ Tamaño: una comisión es del orden de 20 a 50 filas. Entra holgado en Spark. El
 
 `logs/{id}`: crear, nunca editar. `uid` = usuario autenticado. El diff no lleva DNI completo, CUIL, teléfono, mail ni URL de documentos.
 
-### 4.9. Qué no se modela en la primera entrega
+### 4.9. Qué no se modela
 
-- Asistencia. No está en ninguna planilla. Pregunta 2.
+- **Asistencia.** Nahuel lo sacó del alcance. No hay colección, ni columna en la planilla, ni regla. Las planillas de Drive tampoco la traen.
 - Inscripción a exámenes (el Form sigue).
 - Horarios de tutoría.
 - Archivos adjuntos.
 - Edad persistida.
+- Una semilla de planes, niveles, módulos o materias.
 - Una colección `rac` "vista generada" que reemplace a los documentos. La trayectoria se arma al leer; el ciclo y la acreditación son los datos.
 
 ## 5. Roles y permisos
@@ -263,17 +317,19 @@ Se mantienen los cuatro roles. Los valores viejos siguen andando hasta que se re
 | Ver padrón (sin DNI completo ni links) | sí | no | sí | no |
 | Ver y editar privado y documentos | sí | no | no | no |
 | Ver semáforo de documentación | sí | no | sí | no |
-| Ver RAC y trayectoria | sí | solo si tiene el plan y el año asignados, y en la trayectoria solo sus espacios | sí, sin links | no |
-| Cargar notas del ciclo abierto, en sus espacios | sí | sí | no | no |
+| Ver RAC y trayectoria | sí | solo las materias y el año que tiene asignados | sí, sin links | no |
+| Cargar notas del ciclo abierto, en sus materias, si el estudiante no está de baja | sí | sí | no | no |
 | Cerrar o reabrir RAC, cerrar ciclo | sí | no | no | no |
+| Dar de baja y reactivar | sí | no | no. Ve el estado y la fecha, no el motivo | no |
+| Planes de Estudio (alta, niveles, módulos, materias) | sí | no | no | no |
 | Equivalencias y pases | escribe | no | lee | no |
-| Asignar roles y espacios | sí, y no el propio rol | no | no | no |
+| Asignar roles y materias | sí, y no el propio rol | no | no | no |
 | Exportar con columnas sensibles | sí, con confirmación | no | no | no |
 | Logs | lee | no | no | no |
 
 El docente no necesita el padrón: entra a "Mis planillas". Eso ya está bien encaminado y no se abre.
 
-Asignación, como ahora, en `docentes/{uid}`: claves `planId|codigo|anio`, más `ensenaM8` para el espacio compartido. Releer al docente en Usuarios después de cambiar el catálogo, porque las claves viejas apuntan a ids como `matematica` y no a `1.3`.
+Asignación en `docentes/{uid}`: claves `planEstudioId|nivelId|materiaId|anio`. El flag `ensenaM8` deja de ser especial: si la materia tiene `comparteEntreNiveles`, el docente asignado a esa materia en un nivel puede replicar la nota según la regla de 4.1. Después de cargar los planes a mano, cada docente se vuelve a guardar en Usuarios: las claves viejas (`matematica`, y el M8 fijo) no sirven.
 
 Nadie se autodesigna rol, `disabled` ni `activo`. El autoregistro sigue creando `pendiente`.
 
@@ -296,7 +352,7 @@ flowchart TD
   existe -->|sí| ficha["Abrir la ficha. No se crea otro"]
   existe -->|DNI inválido| corte["No se inscribe. Queda explicado en pantalla"]
   existe -->|no| identidad["Apellido, nombre, DNI, nacimiento, contacto"]
-  identidad --> cursado["Modalidad, plan actual, cohorte, ciclo abierto"]
+  identidad --> cursado["Modalidad, plan de estudio, nivel, cohorte, ciclo abierto"]
   cursado --> docs["Cada documento: estado y, si hay, pegar el link"]
   docs --> rac["RAC del ciclo con los espacios de ese plan"]
   rac --> equiv["Equivalencias de ingreso, opcionales"]
@@ -309,13 +365,13 @@ Criterios del flujo:
 - Primero el DNI, después el resto. El duplicado se detecta antes de tipear la ficha.
 - Apellido y nombre van separados. Se muestran como "Apellido, Nombre".
 - El ciclo tiene que estar abierto, como ahora.
-- Si el plan sigue en borrador (sin espacios confirmados), se puede guardar la ficha y los documentos, y el RAC espera. Mejor eso que sembrar espacios falsos.
-- La operación sigue siendo atómica. Con los espacios de un solo plan (no los 42) el batch queda muy por debajo de las 500 operaciones.
+- Si el nivel todavía no tiene materias, se puede guardar la ficha y los documentos, y el RAC espera. La app no inventa materias para destrabar el alta.
+- La operación sigue siendo atómica. Con las materias de un solo nivel el batch queda muy por debajo de las 500 operaciones.
 - Lectura no ve este formulario.
 
 ### 6.2. Ficha
 
-Pestañas: Identidad, Documentos, Trayectoria, Pases, Equivalencias.
+Pestañas: Identidad, Documentos, Trayectoria, Pases, Equivalencias. Si el estado es activo, el admin ve "Dar de baja" (fecha y motivo, con la confirmación de que sale de las planillas y de que las notas quedan). Si está de baja, ve "Reactivar" y el texto de que vuelve solo a las materias que no aprobó. Lectura ve la marca y la fecha, no el motivo y no los botones.
 
 Documentos: una fila por tipo, estado visible, campo para pegar el link, error inmediato si el host no está permitido. No hay botón de subir archivo. Admin ve el link; lectura ve el semáforo en el padrón y no entra a esta pestaña.
 
@@ -325,8 +381,8 @@ Identidad privada (DNI, CUIL, teléfono, mail, nacimiento) solo en la pestaña d
 
 Dos vistas del mismo estudiante:
 
-1. **Este ciclo:** espacios del plan, editables si el RAC está abierto y el rol alcanza. Cerrar (admin) pasa lo no aprobado a `adeuda` y bloquea. Reabrir exige un motivo que va al log. Generar el ciclo siguiente abre el RAC del plan destino y arrastra lo no aprobado como `Prev`, igual que la idea actual, pero matcheando por código `n.m` y no por nombre suelto.
-2. **Trayectoria:** los 42 códigos agrupados por módulo. Nota, fecha, condición, plan donde se acreditó. Sirve para imprimir un respaldo de papel. El Libro Matriz no se reemplaza: el pie de la impresión lo dice.
+1. **Este ciclo:** materias activas del nivel, editables si el RAC está abierto, el rol alcanza y el estudiante no está de baja. Cerrar (admin) pasa lo no aprobado a `adeuda`, copia lo aprobado a la acreditación permanente y bloquea. Reabrir exige un motivo que va al log. Generar el ciclo siguiente abre el RAC del nivel que sigue en `orden` dentro del mismo plan de estudio, y arrastra lo no aprobado como `Prev`. Si ese nivel no existe, el botón lo dice y no crea un nivel vacío.
+2. **Trayectoria:** las materias que el admin cargó, agrupadas por nivel y por módulo. Nota, fecha, condición, nivel donde se acreditó. Una materia aprobada sigue en esta vista después de la baja. Sirve para imprimir un respaldo de papel. El Libro Matriz no se reemplaza: el pie de la impresión lo dice.
 
 El cierre masivo del ciclo se hace **por plan**, no de toda la sede en un clic. Con espacios de más y todo el padrón junto, las escrituras de un solo día pueden pasar el cupo gratuito (sección 8).
 
@@ -354,10 +410,33 @@ Admin puede abrir la misma planilla para un espacio, para corregir. Lectura no e
 
 - **Equivalencias:** elegir estudiante, código, nota, fecha, número, origen. Aviso si la fecha pasa del 1 de julio del ciclo (la regla de plazo ya está en `alertas.ts`). Asentar escribe RAC + acreditación.
 - **Pases:** el alta actual, más el semáforo de vencimiento en el inicio del admin.
-- **Usuarios:** igual, con las claves nuevas de espacio.
-- **Planes:** editor del subconjunto de códigos. Mientras Nahuel no confirme, el plan se ve como borrador y no se puede usar para abrir un RAC.
+- **Usuarios:** igual, con las claves `planEstudioId|nivelId|materiaId|anio`.
 - **Exportar:** se mantiene el Excel con confirmación para columnas sensibles, y se agregan los links de documentos solo en esa exportación de admin.
-- **Público:** la landing queda. Cuando la currícula esté confirmada, se corrige el texto de A/B/C para que deje de contradecir al sistema. Hasta entonces no se publica una tercera versión.
+- **Público:** la landing queda como texto editado a mano. No se genera desde Planes de Estudio. Ya dice que A es 1°, B es 2° y C es 3°, que es lo que confirmó Nahuel. Las materias que lista no se copian a Firestore.
+
+### 6.6. Planes de Estudio
+
+Ítem de menú, solo admin, con ese nombre: **Planes de Estudio**. Reemplaza a "Planes y espacios" y al botón que siembra `planesSede.ts`.
+
+```mermaid
+flowchart TD
+  lista["Listado: orientación, resolución, validez, niveles"] --> vacio{"¿Hay alguno?"}
+  vacio -->|no| alta["Agregar plan"]
+  vacio -->|sí| alta
+  lista --> editor["Editar"]
+  alta --> datos["Resolución, Orientación, Validez Nacional"]
+  datos --> editor
+  editor --> nivel["Agregar nivel: código, año, nombre"]
+  nivel --> modulo["Agregar módulo"]
+  modulo --> materia["Agregar materia: nombre, orden, código opcional"]
+```
+
+- El listado vacío dice que todavía no hay planes, y el único alta es "Agregar plan". No hay "Cargar planes de la sede" ni un plan de ejemplo.
+- El formulario de alta pide solo Resolución, Orientación y Validez Nacional. Los tres son obligatorios. Al guardar, el plan queda sin niveles.
+- En el editor se agregan los niveles. El texto de ayuda dice que, en esta modalidad, A es 1° año, B es 2° y C es 3°, y que hay que cargarlos. No se insertan solos ni aunque el admin deje el código vacío.
+- Dentro del nivel: módulos, y dentro del módulo: materias. Se puede editar el nombre. Si `enUso` es true, no hay borrar; se puede desactivar para que no entre en los RAC nuevos.
+- El checkbox "se comparte entre niveles" arranca destildado. No hay un módulo 8 especial.
+- Lectura y docente no ven este ítem.
 
 ## 7. Interfaz y sistema de diseño
 
@@ -391,10 +470,11 @@ La sede entra en Spark con margen, si se respetan estas cotas:
 | Uso | Orden de magnitud | Por qué entra |
 |---|---|---|
 | Padrón | ~500 estudiantes | Un resumen por año, una lectura |
-| Acreditaciones | solo donde hay nota, no 42 vacías | Muy por debajo de 1 GiB |
-| Abrir una planilla | una consulta de una comisión | lejos de decenas de miles de lecturas diarias |
+| Acreditaciones | solo donde hay materia aprobada | Muy por debajo de 1 GiB |
+| Abrir una planilla | una consulta de una comisión, sin las bajas | lejos de decenas de miles de lecturas diarias |
 | Alta | un batch por persona | por debajo de 500 operaciones y del cupo de escrituras |
-| Cierre de ciclo | por plan, no toda la sede con 42 filas | el cierre total de filas vacías sí podría pasar el cupo diario de escrituras; por eso no se guardan vacías y se cierra por tanda |
+| Cierre de ciclo | por nivel, no toda la sede con filas vacías | el cierre de casilleros vacíos podría pasar el cupo diario de escrituras; por eso no se guardan y se cierra por tanda |
+| Baja | unas pocas escrituras y un borrado de fila por materia del RAC abierto | entra en un solo batch |
 
 No hacen falta Cloud Functions: la regla y el cliente ya cierran el negocio (nota válida, RAC abierto, rol, DNI único). No hace falta Storage: los archivos quedan en Drive. Los vencimientos de pases se calculan al abrir el inicio. App Check se puede sumar después, en Spark, y no es parte de este rediseño.
 
@@ -408,28 +488,33 @@ Cambios respecto de `firestore.rules`:
 
 | Ruta | Cambio |
 |---|---|
-| `estudiantes/{id}` | Sacar cualquier campo URL. Seguir prohibiendo DNI, CUIL, mail, teléfono y nacimiento en el público. Sumar `modalidad`, `gestionSge`, `documentacionResumen` al esquema que el admin puede escribir. |
+| `estudiantes/{id}` | Sacar cualquier campo URL. Seguir prohibiendo DNI, CUIL, mail, teléfono y nacimiento en el público. Sumar `modalidad`, `gestionSge`, `documentacionResumen`, `planEstudioId`, `nivelActualId`, `fechaBaja`. `estado == 'baja'` solo si `fechaBaja` es `aaaa-mm-dd`. Volver a `activo` solo admin, y en el mismo espíritu: docente no escribe este documento. |
 | `privado/datos` | Sigue solo admin. Acepta `linkCarpetaDrive` solo si el host está permitido. |
 | `documentos/{tipo}` | Nueva. Solo admin. `estado` del enum. `url` vacía o host permitido. Sin delete físico: se cambia el estado. |
+| `estudiantes/{id}/bajas/{bajaId}` | Solo admin lee y crea. Puede completar `fechaReactivacion`. Delete: no. El motivo no está en el documento público. |
 | `dniIndex/{dni}` | Sigue create-only para el alta. Delete solo admin, para la corrección, con la clave nueva ya creada. Sigue sin update. |
-| `catalogoEspacios` | Staff lee. Admin escribe. Nadie borra un código que ya tenga acreditaciones (el cliente lo impide; la regla puede prohibir delete directo). |
-| `planes` | Admin escribe. Un plan `borrador` no sirve para crear un RAC: la regla de create del RAC exige que el plan exista, y el cliente exige `espaciosIds` no vacío. |
-| `calificaciones` | `espacioId` con forma de código. `fecha` vacía o `aaaa-mm-dd` (se va el tope de 7 caracteres). `Aus` y `OtroPlan` en la condición. Docente: solo sus campos de nota, RAC abierto, asignado al código. Admin: también condición y `OtroPlan`. |
-| `acreditaciones` | Admin escribe. Docente escribe solo si `get` de su calificación coincide en nota, código, uid y RAC abierto. Lectura lee. Delete: no. |
-| `indices/.../filas` | Lectura del listado si `planId`, `espacioId` y `anio` del propio documento coinciden con la asignación. Docente actualiza solo los campos de nota y solo si `racAbierto` es true. Admin mantiene las filas cuando abre o cierra el RAC. |
+| `planesEstudio` y subcolecciones `niveles`, `modulos`, `materias` | Admin lee y escribe. Lectura lee, para armar la trayectoria. Docente lee las materias de sus asignaciones. Create del plan exige `orientacion`, `resolucion` y `validezNacional` no vacíos. Delete de materia, módulo o nivel solo si `enUso` no es true. |
+| `planes` y `planes/{id}/espacios` viejos | Dejan de ser el alta de la currícula. Hasta la fase 7 siguen legibles por staff para no romper un RAC de prueba ya escrito; el cliente nuevo no los siembra. |
+| `calificaciones` | `materiaId` igual al id del documento. `fecha` vacía o `aaaa-mm-dd` (se va el tope de 7 caracteres). `Aus` y `OtroPlan` en la condición. Docente: solo sus campos de nota, RAC abierto, estudiante que no esté de baja, asignado a esa materia. Admin: también condición y `OtroPlan`. Delete: no. |
+| `acreditaciones` | Create: admin, o docente si `get` de su calificación coincide en nota, materia, uid y RAC abierto. Update y delete: no, ni para admin. Lectura lee. La rectificación es un subdocumento de create, solo admin, que no modifica el padre. |
+| `indices/.../filas` | Lectura del listado si `nivelId`, `materiaId` y `anio` del propio documento coinciden con la asignación. Docente actualiza solo los campos de nota y solo si `racAbierto` es true. Create de docente rechazado si el estudiante está de baja. Admin borra la fila al dar de baja y la vuelve a crear al reactivar, solo si no hay acreditación de esa materia. |
 | `revisiones` | Solo admin. |
-| `equivalencias`, `pases`, `logs`, `users`, `docentes`, `ciclos` | Igual en espíritu. Equivalencia exige código y número. |
+| `equivalencias`, `pases`, `logs`, `users`, `docentes`, `ciclos` | Igual en espíritu. Equivalencia exige `materiaId` y número. |
 | Colecciones viejas | Siguen solo admin hasta la fase 7. Después se niega el acceso en un deploy aparte, cuando ya no haya nada que leer. |
 
 Casos que las pruebas tienen que cubrir, con personas ficticias del emulador:
 
 - Docente no lee `documentos` ni `privado` ni un índice de otro espacio.
-- Lectura no lee URLs.
+- Lectura no lee URLs ni el motivo de la baja.
 - Una URL a otro host se rechaza.
 - Docente no escribe una acreditación si la calificación no coincide.
+- Una acreditación ya creada rechaza update y delete, también con un usuario admin de prueba.
 - RAC cerrado rechaza la nota.
+- Estudiante de baja: el docente no le crea fila ni le guarda nota; la calificación que ya estaba sigue legible para admin.
 - Nota 6.5 pasa; nota 6.25 no; `Aus` pasa sin número.
 - El segundo alta con el mismo DNI falla.
+- Un plan de estudio sin resolución, sin orientación o sin validez nacional se rechaza.
+- Borrar una materia con `enUso` se rechaza.
 - Docente no se promueve a admin.
 - `pendiente` no lee estudiantes.
 
@@ -441,7 +526,7 @@ Orden. Ningún paso escribe en `ceija12resm` por su cuenta.
 
 1. Nahuel saca una copia fechada de LEGAJOS, de los RAC 2020–2026 y de EQUIVALENCIAS. El script no lo hace.
 2. Se exporta a CSV en la computadora de quien administra. Esos archivos no entran al git.
-3. Se confirma la currícula (preguntas 1 y 6 como mínimo). Sin eso se pueden ensayar los parsers, no se puede abrir el RAC de producción.
+3. El admin carga a mano, en el emulador primero, el plan de estudio con sus niveles, módulos y materias. Sin eso el importador no tiene contra qué cruzar una nota. Los rótulos del RAC 2026 le sirven de ayuda en la pantalla, no de archivo para sembrar.
 
 ### 10.2. Limpieza, en seco
 
@@ -449,26 +534,26 @@ El script sigue el contrato de `scripts/migracion/migrar.mjs`: `--emulador`, `--
 
 | Fuente | Qué hace el parser | Qué manda a la cola |
 |---|---|---|
-| LEGAJOS | DNI solo dígitos; apellido y nombre separados lo mejor posible; modalidad; gestión; plan y cohorte si el texto es `A2026` o similar; documentos a estado, sin inventar URL; link de título si el host cierra | DNI vacío, no numérico o duplicado; plan ilegible (`???`, dos planes, letra sola); "digital en Drive" sin URL |
-| RAC 2026 | Por posición: fila de la nómina = bloque. Ignora `#REF!` y fórmulas. Nota numérica de a medio punto. Fecha a ISO, con los formatos mezclados que se puedan reconocer sin ambigüedad. `PLAN X` → `OtroPlan`. Código `n.m` del rótulo | `apro` sin número, `10 (diez)`, fecha ambigua, bloque que no cae en la nómina, pestaña VIRTUALES |
+| LEGAJOS | DNI solo dígitos; apellido y nombre separados lo mejor posible; modalidad; gestión; nivel y cohorte si el texto es `A2026` o similar y ese nivel ya existe en el plan cargado; documentos a estado, sin inventar URL; link de título si el host cierra. No crea planes. | DNI vacío, no numérico o duplicado; plan ilegible (`???`, dos planes, letra sola); nivel que el admin todavía no cargó; "digital en Drive" sin URL |
+| RAC 2026 | Por posición: fila de la nómina = bloque. Ignora `#REF!` y fórmulas. Nota numérica de a medio punto. Fecha a ISO, con los formatos mezclados que se puedan reconocer sin ambigüedad. `PLAN X` → `OtroPlan`. Cruza el rótulo `n.m` con `materia.codigo`. Una nota aprobada genera acreditación. | `apro` sin número, `10 (diez)`, fecha ambigua, bloque que no cae en la nómina, código sin materia cargada, pestaña VIRTUALES |
 | VIRTUALES | Cruza por nombre normalizado (sin tildes, espacios simples) contra el padrón ya limpio | Cero coincidencias o más de una |
-| EQUIVALENCIAS | Nota, fecha, estado, número si está. Alias de espacio → código | Texto de espacio sin alias |
+| EQUIVALENCIAS | Nota, fecha, estado, número si está. Alias de espacio → `materia.codigo` | Texto de espacio sin materia cargada |
 | RAC 2020–2025 | Solo después de que 2026 esté aceptado. Completa acreditaciones que 2026 no trae. No pisa una nota ya cargada | Mismo código con otra nota |
 | `students` / `grades` / `equivalences` | Recién cuando se sepa si en producción hay algo además de pruebas. Si son cuentas de prueba, no se migran: se archivan con las reglas viejas y listo | Cualquier fila cuyo DNI no esté en el padrón limpio |
 
-No se importa la columna EDAD. No se importa el color de la celda (no es un dato legible): la baja queda sin marcar hasta que Nahuel diga cómo registrar las que hoy estarían en rojo.
+No se importa la columna EDAD. No se importa el color de la celda: una baja vieja pintada de rojo no se recupera del archivo. Queda activa en la app hasta que secretaría la marque con el flujo de 4.2.1. El importador no da de baja a nadie por su cuenta.
 
 La salida del dry-run son conteos: filas, DNI válidos, duplicados, sin DNI, notas reconocidas, notas a revisar, fechas a revisar, espacios sin código. El detalle con referencias de fila va a un CSV local, gitignoreado, para que secretaría lo resuelva en Drive. El repo no recibe ese CSV.
 
 ### 10.3. Ensayo
 
-Sembrar solo gente ficticia (`scripts/seed-emulador.ts` ya se niega a correr fuera de localhost). Correr el alta, la planilla, el cierre y una importación dry-run contra el emulador. Criterio: los conteos cierran y las pruebas de reglas pasan.
+Gente ficticia, y un plan de estudio ficticio creado con la misma función que va a usar el formulario (`scripts/seed-emulador.ts` ya se niega a correr fuera de localhost). Ese seed de prueba no es el arranque de la app y no llama a `cargarPlanesSede`. Correr el alta, la planilla, una baja, una reactivación, el cierre y una importación dry-run contra el emulador. Criterio: los conteos cierran, la persona de baja no está en la planilla, su acreditación sigue, y las pruebas de reglas pasan.
 
 ### 10.4. Carga real
 
 No está en este repositorio como botón. Cuando las fases 1 a 6 estén aceptadas, Nahuel corre la carga desde su computadora, con una cuenta de servicio que no se commitea, en tandas de a lo sumo 400 operaciones, primero un puñado de fichas de prueba que después se borran, después el padrón. El agente no ejecuta ese paso y no despliega reglas ni hosting.
 
-Después de la carga: regrabar a cada docente en Usuarios para que `docentes/{uid}` use los códigos nuevos. Las cuentas de prueba viejas se rotan o se borran en el proyecto real, a mano, como ya pide `AGENTS.md`.
+Después de la carga: regrabar a cada docente en Usuarios para que `docentes/{uid}` apunte a las materias cargadas a mano. Las cuentas de prueba viejas se rotan o se borran en el proyecto real, a mano, como ya pide `AGENTS.md`.
 
 ## 11. Fases y criterios de aceptación
 
@@ -476,15 +561,15 @@ Cada fase es un PR aparte. Este documento es la fase 0 y no incluye código. No 
 
 ### Fase 0 — Decisiones
 
-Este plan, más las respuestas de la sección 12.
+Este plan. Currícula, asistencia y bajas ya están respondidas y bajan a las secciones 4, 5, 6 y 9. Las preguntas de la sección 12 no traban Planes de Estudio ni la planilla.
 
-Aceptación: Nahuel responde al menos las preguntas 1, 2 y 3. Con la 1 se puede fijar el subconjunto de cada plan. Sin la 1, las fases de RAC y de importación no arrancan; la de interfaz base sí.
+Aceptación: el documento describe un alta de plan sin semilla, la baja que saca la fila y conserva la acreditación, y no pide asistencia.
 
 ### Fase 1 — Modelo de dominio, en pruebas y sin Firebase real
 
-Catálogo de 42 códigos, plan como subconjunto, documentos como tipo, fechas ISO, condiciones `Aus` y `OtroPlan`, armado de la trayectoria en memoria, parsers puros de nota, fecha y DNI (testeados con strings, sin planillas reales).
+Plan de estudio con resolución, orientación y validez nacional; niveles, módulos y materias; baja y reactivación; acreditación que no se borra; documentos como tipo; fechas ISO; condiciones `Aus` y `OtroPlan`; armado de la trayectoria en memoria; parsers puros de nota, fecha y DNI (testeados con strings, sin planillas reales).
 
-Aceptación: `npm run test:domain` pasa. Ningún test usa un DNI o un nombre de una planilla real; los casos son inventados. Un plan sin `espaciosIds` no arma RAC.
+Aceptación: `npm run test:domain` pasa. Ningún test usa un DNI o un nombre de una planilla real; los casos son inventados. Un nivel sin materias no arma RAC. Dar de baja devuelve las rutas de filas a borrar y las acreditaciones a crear para lo ya aprobado, y no incluye ningún delete de calificaciones. Reactivar no devuelve una fila para una materia que ya tiene acreditación. No hay función de dominio que devuelva los planes de `planesSede.ts` como datos iniciales.
 
 ### Fase 2 — Reglas en el emulador
 
@@ -494,19 +579,19 @@ Aceptación: `npm run test:rules` pasa contra `demo-ceija`. El script de migraci
 
 ### Fase 3 — Interfaz base e inscripción
 
-Router, tema claro, ficha, wizard de alta, documentos con lista blanca. Planilla vieja sigue andando hasta la fase 4 para no dejar a los docentes sin nada, si es que ya hay alguien cargando en el modelo nuevo. Si en producción ese modelo sigue vacío, se puede reemplazar directo.
+Router, tema claro, ficha, wizard de alta, documentos con lista blanca, y la pantalla Planes de Estudio. Planilla vieja sigue andando hasta la fase 4 para no dejar a los docentes sin nada, si es que ya hay alguien cargando en el modelo nuevo. Si en producción ese modelo sigue vacío, se puede reemplazar directo.
 
-Aceptación, en el emulador o con el proyecto local, con personas ficticias: el alta duplicada muestra el estudiante existente; un link a un host cualquiera no se guarda; lectura no ve el link; el celular muestra la ficha en una columna. Verificado en el navegador, no solo con una captura.
+Aceptación, en el emulador o con el proyecto local, con personas ficticias: al entrar, Planes de Estudio está vacío y no aparece un botón de sembrar; se puede crear un plan con los tres campos y después un nivel con un módulo y una materia; el alta duplicada muestra el estudiante existente; un link a un host cualquiera no se guarda; lectura no ve el link; dar de baja saca a la persona de la planilla y la ficha sigue mostrando la nota; el celular muestra la ficha en una columna. Verificado en el navegador, no solo con una captura.
 
 ### Fase 4 — Planilla
 
 Grilla de teclado, autoguardado, filas en subcolección, versión móvil.
 
-Aceptación: con una comisión ficticia de ~30, cargar una columna de notas solo con teclado, sin mouse, y ver cada fila en "guardado". Recargar y encontrar las mismas notas. En ancho de teléfono, cargar una nota con el teclado grande. RAC cerrado no acepta la tecla. Un docente de otro espacio no abre la consulta.
+Aceptación: con una comisión ficticia de ~30, cargar una columna de notas solo con teclado, sin mouse, y ver cada fila en "guardado". Recargar y encontrar las mismas notas. En ancho de teléfono, cargar una nota con el teclado grande. RAC cerrado no acepta la tecla. Un docente de otro espacio no abre la consulta. Después de una baja, esa fila no está; la nota sigue en el RAC al entrar como admin.
 
 ### Fase 5 — Trayectoria, equivalencias, pases, impresión
 
-Aceptación: la trayectoria muestra los 42 códigos con huecos explícitos; asentar una equivalencia deja `Equiv` y no deja editar esa celda al docente; un pase provisorio de más de 60 días aparece vencido en el inicio; la impresión no muestra DNI completo ni links, y dice que el Libro Matriz es el registro oficial.
+Aceptación: la trayectoria muestra las materias cargadas en el plan, con huecos explícitos, y sigue mostrando una materia aprobada cuando el estudiante está de baja; asentar una equivalencia deja `Equiv`, crea la acreditación y no deja editar esa celda al docente; reactivar no devuelve esa materia a la planilla; un pase provisorio de más de 60 días aparece vencido en el inicio; la impresión no muestra DNI completo ni links, y dice que el Libro Matriz es el registro oficial.
 
 ### Fase 6 — Importador en seco
 
@@ -522,36 +607,36 @@ Aceptación: el padrón nuevo coincide en conteos con el dry-run aceptado; las p
 
 ## 12. Preguntas para Nahuel
 
-Las tres primeras traban el RAC y las bajas. El resto afina, y se puede avanzar en la ficha y en la planilla con una respuesta provisoria.
+Currícula, asistencia y bajas ya están cerradas (secciones 2.4, 4.1, 4.2.1 y 4.9). Estas no traban Planes de Estudio ni la planilla. El plan avanza con la respuesta provisoria que está escrita en cada ítem.
 
-1. **Qué son A, B y C.** ¿A es 1° (Ciclo Básico), B es 2° y C es 3° de Economía y Administración, como dice la página de la sede? ¿O la letra es la cohorte o el turno, y todos cursan la misma lista? En el RAC 2026 las cuatro pestañas repiten los 42 rótulos (`1.1` a `9.2`); en la app hay dos listas distintas y más cortas. ¿Inglés entra en los módulos 1 a 7, como el rótulo, o no forma parte del plan que publican? ¿Arte y Cultura y Deportes se dictan en esta sede?
-2. **Asistencia.** Las planillas no la registran. ¿Hace falta cargarla en la app, o sigue afuera?
-3. **Bajas.** LEGAJOS no tiene estado de baja; se comentó que en el RAC se marcan pintando la celda de rojo, y ese color no se puede leer como dato. ¿Cómo querés darlas de baja: baja voluntaria, inasistencia, pase a otra escuela, y con qué fecha? ¿La persona baja sale de la planilla del docente y el RAC queda congelado para consulta?
-4. **Nota de aprobación.** El código y la página usan 6. ¿Lo confirmás contra la Res. 001/2020, o hay espacios que aprueban con otra nota?
-5. **TPI.** La planilla de la app exige `APROBADO` o `REVISAR` además de la nota. En el RAC de Drive no existe esa columna: hay nota, fecha y a veces un texto. ¿Seguimos con el TPI o alcanza con la nota (6 o más aprueba, salvo ausente o "a revisar")?
-6. **Documentos.** ¿Cuáles tienen que tener link sí o sí, y cuáles alcanzan con presentado / adeuda / no corresponde? ¿Cada estudiante ya tiene una carpeta en Drive, o el link se pega solo cuando hay un escaneo? ¿Lectura puede ver el semáforo de "documentación completa" sin abrir los links? (El plan asume que sí, y que el link lo ve solo admin.)
-7. **VIRTUALES.** ¿Es el cursado virtual sobre los mismos planes A/B/C, o es un padrón aparte? En esa pestaña no hay DNI.
-8. **Equivalencias.** ¿Quién las asienta, con qué número, y el plazo interno sigue siendo antes de julio?
-9. **Cierre.** ¿Se cierra el RAC de una persona, el de un plan, o el de toda la sede el mismo día?
-10. **Historial.** ¿La primera carga es LEGAJOS + RAC 2026, y los RAC 2020–2025 entran después solo para llenar huecos?
-11. **Oficialidad.** ¿Sigue en pie que el Libro Matriz y el SGE mandan, y que esta app es el cuaderno de trabajo de la sede?
-12. **Quién entra.** ¿Cuántos docentes van a cargar notas, y hay alguien más además de admin y lectura (preceptoría, por ejemplo)?
+1. **Nota de aprobación.** El código y la página usan 6. ¿Lo confirmás contra la Res. 001/2020, o hay materias que aprueban con otra nota? Mientras tanto, la acreditación permanente se crea con 6 o más.
+2. **TPI.** La planilla de la app exige `APROBADO` o `REVISAR` además de la nota. En el RAC de Drive no existe esa columna: hay nota, fecha y a veces un texto. ¿Seguimos con el TPI o alcanza con la nota (6 o más aprueba, salvo ausente o "a revisar")?
+3. **Documentos.** ¿Cuáles tienen que tener link sí o sí, y cuáles alcanzan con presentado / adeuda / no corresponde? ¿Cada estudiante ya tiene una carpeta en Drive, o el link se pega solo cuando hay un escaneo? ¿Lectura puede ver el semáforo de "documentación completa" sin abrir los links? El plan asume que sí, y que el link lo ve solo admin.
+4. **VIRTUALES.** ¿Es el cursado virtual sobre los mismos niveles A, B y C, o es un padrón aparte? En esa pestaña no hay DNI.
+5. **Equivalencias.** ¿Quién las asienta, con qué número, y el plazo interno sigue siendo antes de julio?
+6. **Cierre.** ¿Se cierra el RAC de una persona, el de un nivel, o el de toda la sede el mismo día?
+7. **Historial.** ¿La primera carga es LEGAJOS + RAC 2026, y los RAC 2020–2025 entran después solo para llenar huecos?
+8. **Oficialidad.** ¿Sigue en pie que el Libro Matriz y el SGE mandan, y que esta app es el cuaderno de trabajo de la sede?
+9. **Quién entra.** ¿Cuántos docentes van a cargar notas, y hay alguien más además de admin y lectura (preceptoría, por ejemplo)?
 
 ## 13. Qué queda fuera
 
 - Deploy de reglas o de hosting.
 - Cualquier lectura o escritura en `ceija12resm` hecha por un agente.
 - Subir escaneos, mandar mails, App Check, y reemplazar los Forms de exámenes o de solicitudes.
-- Inventar la currícula de Arte y Cultura o de Deportes.
+- Asistencia. Quedó fuera de alcance.
+- Sembrar planes, niveles, módulos o materias, incluidos Arte y Cultura, Deportes y los rótulos del RAC.
 - Mostrar o commitear datos personales, aunque sea "para probar el import".
 - Borrar las colecciones viejas antes de la fase 7.
+- Borrar o reescribir una acreditación, incluso al dar de baja.
 
 ## 14. Riesgos
 
 | Riesgo | Cómo se contiene |
 |---|---|
-| Se siembra el plan equivocado y después hay que mudar las notas | El plan queda en borrador hasta la pregunta 1. La clave de la nota es el código del RAC, no el id corto de `planesSede.ts`. |
-| El docente pisa una acreditación histórica desde la grilla | La grilla escribe el ciclo. La acreditación exige que la regla lea la calificación. `OtroPlan` y `Equiv` no se editan con el teclado. |
+| Alguien siembra `planesSede.ts` o los 42 rótulos y después hay que mudar las notas | No hay botón de sembrar ni escritura al abrir. La clave de la nota es el id de la materia que cargó el admin. El `codigo` `1.3` es solo un cruce para importar. |
+| El docente pisa una acreditación desde la grilla, o la baja la borra | La grilla escribe el ciclo. La acreditación no acepta update ni delete. La baja solo borra filas del índice. `OtroPlan` y `Equiv` no se editan con el teclado. |
+| Una materia aprobada vuelve a la planilla al reactivar | La reactivación no crea fila si ya hay acreditación. |
 | La copia de la fila de planilla se desfasa | La calificación manda. Hay reconstrucción de la fila y un estado de error visible. |
 | El cierre de ciclo se come el cupo de escrituras | No se guardan casilleros vacíos. Se cierra por plan. |
 | La importación "arregla" una nota en texto | Eso va a la cola. No se convierte `apro` en un 6. |
