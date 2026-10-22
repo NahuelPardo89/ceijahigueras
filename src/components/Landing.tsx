@@ -17,7 +17,6 @@ export const Landing = ({ onEnter }: LandingProps) => {
             <img src={logoSrc} alt="" width={48} height={48} />
             <div>
               <p className="home-brand-nombre">{identidad.nombre}</p>
-              <p className="home-brand-sede">Sede {identidad.sede}</p>
             </div>
           </div>
           <nav className="home-nav" aria-label="Secciones">
@@ -34,16 +33,11 @@ export const Landing = ({ onEnter }: LandingProps) => {
 
       <main>
         <section className="home-hero">
-          <div className="home-wrap home-hero-grid">
+          <div className="home-wrap">
+            <p className="home-kicker">Semipresencial y combinada en línea</p>
+            <h1>{identidad.nombre}</h1>
+            <div className="home-hero-grid">
             <div>
-              <p className="home-kicker">Semipresencial y combinada en línea</p>
-              <h1>
-                {identidad.nombre}
-                <span>«{identidad.epiteto}»</span>
-              </h1>
-              <p className="home-hero-lead">
-                Sede {identidad.sede} · {identidad.ambito} · {identidad.regionDetalle}
-              </p>
               <p className="home-hero-lead">
                 Código de empresa {identidad.codigoEmpresa} · CUE {identidad.cue}
               </p>
@@ -61,35 +55,27 @@ export const Landing = ({ onEnter }: LandingProps) => {
             <figure className="home-foto">
               <img
                 src={edificioSrc}
-                alt="Edificio de la sede Las Higueras del CEIJA N° 12, en España 36"
+                alt="Edificio de la Escuela N° 12 Remedios de Escalada de San Martín de Las Higueras, en España 36"
                 width={640}
                 height={480}
               />
               <figcaption>Sede Las Higueras, España 36</figcaption>
             </figure>
+            </div>
           </div>
         </section>
 
         <section id="sede" className="home-seccion">
           <div className="home-wrap">
             <h2>La sede</h2>
-            <p className="home-prosa">{identidad.dependencia}</p>
             <dl className="home-datos">
               <div>
                 <dt>Institución</dt>
-                <dd>{identidad.nombre} «{identidad.epiteto}»</dd>
+                <dd>{identidad.nombre}</dd>
               </div>
               <div>
                 <dt>Sede</dt>
                 <dd>{identidad.sede}</dd>
-              </div>
-              <div>
-                <dt>Ámbito</dt>
-                <dd>{identidad.ambito}</dd>
-              </div>
-              <div>
-                <dt>Inspección</dt>
-                <dd>{identidad.regionDetalle}</dd>
               </div>
               <div>
                 <dt>Código de empresa</dt>
@@ -170,10 +156,10 @@ export const Landing = ({ onEnter }: LandingProps) => {
       <footer className="home-footer">
         <div className="home-wrap">
           <p>
-            {identidad.nombre} «{identidad.epiteto}» · Sede {identidad.sede}
+            {identidad.nombre}
           </p>
           <p>
-            {identidad.ambito} · {identidad.regionDetalle} · Código de empresa {identidad.codigoEmpresa} · CUE {identidad.cue}
+            Código de empresa {identidad.codigoEmpresa} · CUE {identidad.cue}
           </p>
           <p>{identidad.lugar}</p>
           <button type="button" className="home-btn home-btn-claro" onClick={onEnter}>

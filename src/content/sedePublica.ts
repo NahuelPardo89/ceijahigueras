@@ -2,7 +2,7 @@
  * Contenido de la página pública de inicio.
  * Editar aquí los textos y los datos de contacto. No incluir datos de estudiantes.
  *
- * Identidad, Región 4, CUE y código de empresa: datos de la sede.
+ * Identidad, CUE y código de empresa: datos de la sede.
  * Correo, dirección, orientación única y las dos modalidades: datos de la sede.
  * Planes A/B/C y espacios: Anexo II de la Res. 001/2020 y Res. 698/2017 y 1206/2017
  * (orientación Economía y Administración, Res. 1206/2017; ciclos Res. 84/2011 y 148/2013).
@@ -28,30 +28,25 @@ export const sedePublica = {
     etiqueta: 'Entrar al sistema',
   },
   identidad: {
-    nombre: 'CEIJA N° 12',
-    epiteto: 'Remedios Escalada de San Martín',
+    nombre: 'Escuela N° 12 Remedios de Escalada de San Martín de Las Higueras',
     sede: 'Las Higueras',
-    ambito: 'CENMA',
-    regionDetalle: 'Región 4 de Inspección',
     codigoEmpresa: 'EE0115116',
     cue: '140512501',
     lugar: 'España 36, Las Higueras, provincia de Córdoba, Argentina',
-    dependencia:
-      'La sede Las Higueras depende del CEIJA N° 12 «Remedios Escalada de San Martín».',
   },
   orientacion: 'Bachiller Orientado en Economía y Administración',
   presentacion: [
     'Secundario para jóvenes y adultos. La sede ofrece dos modalidades: semipresencial y combinada en línea.',
-    'La combinada en línea integra la semipresencialidad a distancia con una propuesta en el aula virtual del ISEP y la DGEJyA. Complementa la oferta; no la reemplaza.',
+    'La combinada en línea se cursa a través de la plataforma web Moodle. Complementa la oferta semipresencial; no la reemplaza.',
   ],
   modalidades: [
     {
       titulo: 'Semipresencial',
-      texto: 'El cursado se organiza en módulos. Cada módulo tiene un Trabajo Práctico Integrador, con resultado Aprobado o Revisar. Aprobarlo habilita la Evaluación Final, que es presencial, obligatoria y la elabora la sede.',
+      texto: 'Cursado día martes y miércoles de 20 a 23 horas.',
     },
     {
       titulo: 'Combinada en línea',
-      texto: 'Programa creado por la Resolución Ministerial 795/2022 para terminar el nivel secundario. Suma el aula virtual a la semipresencialidad a distancia, con la misma evaluación final presencial.',
+      texto: 'Cursado a través de la plataforma web Moodle.',
     },
   ],
   cierreModalidad:
@@ -65,7 +60,7 @@ export const sedePublica = {
       codigo: 'A',
       anio: '1° año',
       ciclo: 'Ciclo Básico',
-      modulos: 'Módulos 1, 2 y 3',
+      modulos: 'Módulos 1, 2, 3 y 8',
       espacios: [
         'Matemática',
         'Interpretación y Producción de Textos',
@@ -78,7 +73,7 @@ export const sedePublica = {
       codigo: 'B',
       anio: '2° año',
       ciclo: 'Ciclo Orientado',
-      modulos: 'Módulos 4 y 5',
+      modulos: 'Módulos 4, 5 y 8',
       espacios: [
         'Matemática',
         'Interpretación y Producción de Textos',
@@ -91,7 +86,7 @@ export const sedePublica = {
       codigo: 'C',
       anio: '3° año',
       ciclo: 'Ciclo Orientado',
-      modulos: 'Módulos 6, 7 y 9',
+      modulos: 'Módulos 6, 7, 8 y 9',
       espacios: [
         'Matemática',
         'Interpretación y Producción de Textos',
