@@ -3,13 +3,13 @@
 Documento de planificación. No implementa pantallas, no cambia reglas y no se despliega.
 No toca el proyecto Firebase real (`ceija12resm`). No hay datos personales: los ejemplos son esquemas, no personas.
 
-Fecha del relevamiento de Drive que usa este plan: 22/10/2026. Actualizado el mismo día con las respuestas de Nahuel: planes, asistencia, bajas, nota 6, sin TPI, un solo link de Drive, equivalencias, primera carga, registro oficial y docentes por área. La app vive en https://ceija12resm.web.app. El Libro Matriz en papel y el SGE siguen siendo el registro oficial. Esta herramienta es de trabajo interno de la sede.
+Fecha del relevamiento de Drive que usa este plan: 22/10/2026. Actualizado el mismo día con las respuestas de Nahuel: planes, asistencia, bajas, nota 6, sin TPI, un solo link de Drive, equivalencias, primera carga, registro oficial, docentes por área, modalidad virtual, cierre del RAC solo al egresar o con pase, y pantallas que no copian la planilla casera. La app vive en https://ceija12resm.web.app. El Libro Matriz en papel y el SGE siguen siendo el registro oficial. Esta herramienta es de trabajo interno de la sede.
 
 ## 1. Qué hay que lograr
 
 1. Inscribir estudiantes sin duplicar DNI y sin mezclar el padrón con el legajo privado.
 2. Guardar la documentación como **un solo link de Drive por estudiante**, más una lista de qué trámites se entregaron. La app no almacena archivos. El plan Spark no tiene Storage y no hace falta pasarse a Blaze para esto.
-3. Administrar el RAC: trayectoria del estudiante, ciclo abierto, cierre y pase al ciclo siguiente.
+3. Administrar el RAC de cada estudiante: abierto mientras cursa, en uno o varios años, y cerrado solo cuando egresa o se va con un pase.
 4. Cargar notas rápido: grilla con teclado, autoguardado, usable en el celular.
 5. Una interfaz clara para secretaría y para docentes, de día y en el horario de cursado (martes y miércoles, 20 a 23).
 
@@ -67,7 +67,15 @@ Nahuel lo cerró: en esta modalidad, A, B y C son la forma en que se arma el cur
 
 Eso no autoriza a precargar nada. Las listas de `planesSede.ts`, las de la página pública y los 42 rótulos del RAC 2026 son referencias para quien tipee el plan, no una semilla. La pantalla actual (`PlanesPanel`) tiene un botón que llama a `cargarPlanesSede()` y escribe esos seis espacios por año: en el rediseño ese botón y ese arranque automático desaparecen. La colección de planes empieza vacía.
 
-La celda `PLAN B` o `PLAN C` dentro de una nota del RAC sigue significando "ya acreditado en otro año del plan", no un cambio de currícula. VIRTUALES sigue siendo una duda de modalidad (pregunta 1), no un cuarto año.
+La celda `PLAN B` o `PLAN C` dentro de una nota del RAC, en la importación, significa "ya acreditado en otro nivel". No es una pantalla que haya que reproducir.
+
+VIRTUALES no es un padrón ni un cuarto plan. Es la modalidad virtual de los mismos niveles A, B y C. Cada estudiante cursa su plan en `semipresencial` o en `virtual`. La pestaña VIRTUALES del RAC 2026 no tiene DNI: esas filas no se cargan solas. Van a la cola, y secretaría las une a una ficha que ya tiene DNI. Ahí la modalidad queda `virtual` y las notas entran al RAC de ese plan.
+
+### 2.5. La planilla no es el diseño
+
+Nahuel lo dijo así: no copiar el modelo del Excel de RAC, porque es un modelo casero. Lo que importa es que a los profesores les resulte más fácil cargar notas, y a la administración y a la coordinación les resulte más fácil verlas.
+
+El archivo sirve para importar. No es la referencia de las pantallas. No se reproduce la matriz de bloques (un grupo de columnas por estudiante), los 42 rótulos copiados en cada bloque, el `#REF!`, la nota escrita como `PLAN B`, ni el rojo de la celda como si fuera un dato. La trayectoria se ve por estudiante, agrupada por nivel y por módulo. La carga de notas es una grilla de una materia, y además separada por modalidad: virtual por un lado, semipresencial por el otro.
 
 ## 3. Decisiones recomendadas
 
@@ -75,8 +83,8 @@ La celda `PLAN B` o `PLAN C` dentro de una nota del RAC sigue significando "ya a
 2. La currícula es configurable por el admin y **no se siembra**. El menú se llama Planes de Estudio. Un plan de estudio tiene Resolución, Orientación y Validez Nacional; adentro, quien administra carga los niveles (A = 1°, B = 2°, C = 3°, u otro código si más adelante hace falta), y en cada nivel los módulos y las materias.
 3. Separar tres cosas que hoy están mezcladas en la palabra "RAC":
    - **Plan de estudio**: lo que el admin cargó (niveles, módulos, materias).
-   - **Ciclo**: las materias de ese nivel, este año, que el docente edita.
-   - **Acreditación**: la materia aprobada, permanente. Una por estudiante y materia. No se borra con la baja ni con el cierre.
+   - **RAC del estudiante**: un documento por persona y plan de estudio. Sigue abierto de un año a otro. Ahí están las materias que cursa ahora y las que todavía no aprobó.
+   - **Acreditación**: la materia aprobada, permanente. Una por estudiante y materia. No se borra con la baja, con el pase de nivel ni con el cierre.
 4. La planilla del docente lee y escribe filas chicas, una por estudiante. No un arreglo gigante y no una lectura por nota. Quien está de baja no tiene fila.
 5. Los archivos no entran a Firebase. Solo URLs de una lista blanca, en el legajo privado.
 6. No hay asistencia. Quedó fuera de alcance.
@@ -86,6 +94,9 @@ La celda `PLAN B` o `PLAN C` dentro de una nota del RAC sigue significando "ya a
 10. El Libro Matriz y el SGE son el registro oficial. La app no emite títulos ni reemplaza Gestión Estudiantes: solo registra el estado de carga (`GESTION E`) como dato de secretaría.
 11. La nota de aprobación es 6. No hay TPI.
 12. Hay pocos docentes, uno por área. Hoy: Matemática, Naturales, Sociales, Inglés, Lengua y ATP (módulos 8 y 9). La asignación es por área, no por materia suelta de un año.
+13. No hay cierre de ciclo ni "generar RAC del ciclo siguiente". El RAC se cierra solo cuando la persona egresa o se va con un pase. Pasar de A a B, o de B a C, es agregar materias al mismo RAC.
+14. Virtual y semipresencial se cargan y se miran por separado. Es la misma materia y el mismo plan, en dos planillas.
+15. Coordinación mira las mismas vistas de admin y de lectura. No hace falta un rol nuevo.
 
 ## 4. Modelo de datos
 
@@ -146,7 +157,7 @@ Un RAC se puede abrir solo si el nivel tiene al menos una materia activa. Un pla
 | `dniEnmascarado` | Como ahora (`**.***.482` es la forma, no un dato real). |
 | `estado` | `activo`, `baja`, `egresado`, `pase`. La baja está definida en 4.2.1. |
 | `fechaBaja` | ISO `aaaa-mm-dd`, o vacío si no está de baja. La ve también lectura, junto con el estado. Sin motivo. |
-| `modalidad` | `semipresencial` o `virtual`. La pestaña VIRTUALES del RAC 2026 no se mapea sola: sigue abierta la pregunta 1. |
+| `modalidad` | `semipresencial` o `virtual`. Obligatoria. Es cómo cursa este plan, no otro padrón. Se copia al RAC y a la fila de la planilla. Cambiarla no abre otro RAC: mueve la fila de una planilla a la otra. |
 | `planEstudioId`, `nivelActualId` | El plan de estudio y el nivel (A, B o C) en el que está hoy. |
 | `cohorteAnio` | El año de `B2026`, no la letra. |
 | `gestionSge` | `cargado`, `no_cargado`, `pase_solicitado`, `pase_invalido`. Es el estado en Gestión Estudiantes, no el estado académico. |
@@ -216,13 +227,13 @@ El semáforo público (`documentacionResumen`) se recalcula en el mismo batch, s
 
 La equivalencia no es un documento escaneado. Es un acto (sección 4.6). El número `nnn/aaaa` vive ahí.
 
-### 4.4. Ciclo y RAC editable
+### 4.4. RAC del estudiante
 
-`ciclos/{anio}`: `abierto` o `cerrado`, como ahora.
+No hay un RAC por año. `ciclos/{anio}` deja de ser un candado: el código de hoy cierra todos los RAC al cerrar el ciclo, y `generarRacSiguiente` abre otro documento. Esas dos operaciones salen. El año queda en la cohorte y en la fecha de la nota.
 
-`rac/{estudianteId}_{anio}_{nivelId}`: un RAC por estudiante, año lectivo y nivel. Guarda también `planEstudioId`. Campos actuales (`estado`, apellido, nombre, `resumen`) más `modalidad`.
+`rac/{estudianteId}_{planEstudioId}`: uno por estudiante y plan de estudio. `estado` `abierto` o `cerrado`. También `nivelActualId`, `modalidad`, apellido, nombre y `resumen`. Sigue abierto aunque cambie el año calendario y aunque pase de nivel.
 
-`rac/{racId}/calificaciones/{materiaId}`: **solo las materias activas de ese nivel**, no una fila vacía por cada materia del plan de estudio completo.
+`rac/{racId}/calificaciones/{materiaId}`: las materias del nivel actual que todavía no tienen acreditación, más las que arrastra de un nivel anterior sin aprobar. No se crean las 42 filas vacías ni una copia del bloque del Excel.
 
 | Campo | Notas |
 |---|---|
@@ -237,7 +248,16 @@ La equivalencia no es un documento escaneado. Es un acto (sección 4.6). El núm
 | `docenteUid`, `actaNro`, `compartidoM8`, `m8RacIds` | `compartidoM8` solo si la materia tiene `comparteEntreNiveles`. |
 | `actualizadoEn` | Para el autoguardado y para ver quién pisó a quién |
 
-No hay campo TPI. El que existe hoy en el código (`APROBADO` / `REVISAR`) no se muestra, no se escribe y no se migra. Una nota de 6 o más deja `aprobado` por sí sola. Menos de 6 queda `pendiente` hasta el cierre del RAC, y ahí pasa a `adeuda`.
+No hay campo TPI. El que existe hoy en el código (`APROBADO` / `REVISAR`) no se muestra, no se escribe y no se migra. Una nota de 6 o más deja `aprobado` por sí sola y pasa a la acreditación. Menos de 6 queda `pendiente` mientras el RAC siga abierto: el año nuevo no la convierte en `adeuda`.
+
+El cierre es solo de esa persona, y solo en dos casos:
+
+- **Egreso.** El admin marca `egresado`. Hace falta que no quede ninguna materia pendiente del plan. El RAC pasa a `cerrado` y a solo lectura. Las filas salen de las planillas. Lo aprobado ya está en la acreditación.
+- **Pase de salida.** El admin registra un pase de egreso. El RAC se cierra aunque adeude materias: lo no aprobado queda `adeuda`, en solo lectura, y también sale de las planillas. Un pase de ingreso no cierra nada.
+
+La baja no cierra el RAC. Saca las filas de la planilla y, si la persona vuelve, esas materias pendientes reaparecen. Reabrir un RAC cerrado es corregir un egreso o un pase cargado de más: solo admin, con motivo en el log. No es una operación de fin de año.
+
+**Pasar de nivel** (A a B, B a C) es otra acción, y no cierra. En el mismo RAC se agregan las materias activas del nivel siguiente que no estén acreditadas. Las que seguían pendientes se quedan. No se crea un documento nuevo ni se les pone `Prev` por el cambio de año. Si el nivel siguiente no existe, el botón lo dice y no inventa materias.
 
 `Aus` no lleva número y no aprueba. `OtroPlan` no se edita en la planilla del docente: lo carga admin o la importación. `Equiv` llega desde el flujo de equivalencias (4.6), no desde el teclado de la grilla.
 
@@ -259,7 +279,7 @@ Se crea cuando la materia queda aprobada (nota de aprobación, equivalencia, u o
 
 Si el mismo par estudiante + materia aparece dos veces en la importación (RAC 2024 y RAC 2026), gana la acreditación ya guardada y la otra va a la cola de revisión. No se pisa en silencio. El RAC 2026 se importa primero justamente porque ya es la acumulación.
 
-La pantalla de trayectoria arma las filas en memoria con las materias que el admin cargó en ese plan de estudio (todos los niveles), más la acreditación y la fila del ciclo abierto. Lo que no tiene documento se muestra como "no cursada" o como "pendiente" según la materia pertenezca o no al nivel actual. No se guardan casilleros vacíos: alcanza con las materias de verdad, y un cierre no escribe de más (sección 8).
+La pantalla de trayectoria arma las filas en memoria con las materias que el admin cargó en ese plan de estudio, más la acreditación y las filas del RAC abierto. Lo que no tiene documento se muestra como "no cursada" o como "pendiente" según la materia esté o no en el nivel actual o entre las que todavía debe. No se guardan casilleros vacíos. No hay un cierre de diciembre que escriba miles de `adeuda` (sección 8).
 
 ### 4.6. Equivalencias y pases
 
@@ -291,19 +311,21 @@ Hoy `indices/{año}_{plan}_{espacio}` guarda un arreglo `filas` y después la pa
 
 Reemplazar el arreglo por subdocumentos:
 
-`indices/{anio}_{nivelId}_{materiaId}/filas/{estudianteId}`
+`indices/{nivelId}_{materiaId}_{modalidad}/filas/{estudianteId}`
 
-Cada fila trae, para que la regla no tenga que hacer `get` del padre en un listado: `planEstudioId`, `nivelId`, `materiaId`, `area`, `anio`, `racId`, `estudianteId`, `apellido`, `nombre`, `dniEnmascarado`, `notaFinal`, `fecha`, `condicion`, `estado`, `racAbierto`. Sin TPI.
+La modalidad va en el id. Virtual y semipresencial son dos planillas. Abrir una no trae a la otra.
 
-No existe la fila si el estudiante está de baja. La consulta del docente no tiene que filtrar bajas a ojo: el documento no está. Si alguien igual intenta crearla, la regla hace `get` del estudiante y rechaza `estado == 'baja'`.
+Cada fila trae, para que la regla no tenga que hacer `get` del padre en un listado: `planEstudioId`, `nivelId`, `materiaId`, `area`, `modalidad`, `racId`, `estudianteId`, `apellido`, `nombre`, `dniEnmascarado`, `notaFinal`, `fecha`, `condicion`, `estado`, `racAbierto`. Sin TPI.
 
-Abrir la planilla es **una consulta** filtrada por área, materia y año (las reglas de listado solo pueden mirar `resource.data`, no otro documento). Guardar es un batch de dos documentos: la calificación (fuente) y esta fila (copia para la grilla). Si la copia falla, la fuente quedó bien y la próxima apertura puede reconstruir; se muestra el error igual.
+No existe la fila si el estudiante está de baja, si ya egresó o si se fue con pase. La consulta del docente no tiene que filtrar a ojo: el documento no está. Si alguien igual intenta crearla, la regla hace `get` del estudiante y rechaza `baja`, `egresado` y `pase`.
 
-Tamaño: una comisión es del orden de 20 a 50 filas. Entra holgado en Spark. El resumen anual (`resumenes/estudiantes_{anio}`, un documento con el padrón) también entra: 500 ítems compactos están muy por debajo de 1 MB. Si algún día se acerca, se parte por inicial. No ahora.
+Abrir la planilla es **una consulta** de esa materia, ese nivel y esa modalidad (las reglas de listado solo pueden mirar `resource.data`, no otro documento). Guardar es un batch de dos documentos: la calificación (fuente) y esta fila (copia para la grilla). Si la copia falla, la fuente quedó bien y la próxima apertura puede reconstruir; se muestra el error igual.
+
+Tamaño: una comisión es del orden de 20 a 50 filas, y además partida en dos modalidades. Entra holgado en Spark. El padrón es un solo resumen (`resumenes/estudiantes`), con `modalidad` y `estado` en cada ítem, para partir virtual y semipresencial en una lectura. 500 ítems compactos están muy por debajo de 1 MB. Si algún día se acerca, se parte por inicial. No es un resumen por año que se cierre en diciembre.
 
 ### 4.8. Revisión de importación y logs
 
-`revisiones/{id}` — solo admin. No es el padrón: es la cola de lo que no se pudo cargar solo (DNI duplicado, fecha ilegible, nota en texto, VIRTUALES sin DNI unívoco, dos notas para el mismo código). Guarda el motivo, el archivo de origen (`legajos`, `rac-2026`, `equivalencias`), la referencia de fila o bloque, y el DNI enmascarado si había uno válido. No guarda el DNI completo ni el teléfono en un campo que lectura pueda ver. El detalle fino queda en el CSV local de Nahuel, que no se commitea (los `.xlsx` y `.csv` ya están en el gitignore).
+`revisiones/{id}` — solo admin. No es el padrón: es la cola de lo que no se pudo cargar solo (DNI duplicado, fecha ilegible, nota en texto, fila de VIRTUALES sin DNI, dos notas para el mismo código). Guarda el motivo, el archivo de origen (`legajos`, `rac-2026`, `equivalencias`), la referencia de fila o bloque, y el DNI enmascarado si había uno válido. No guarda el DNI completo ni el teléfono en un campo que lectura pueda ver. El detalle fino queda en el CSV local de Nahuel, que no se commitea (los `.xlsx` y `.csv` ya están en el gitignore).
 
 `logs/{id}`: crear, nunca editar. `uid` = usuario autenticado. El diff no lleva DNI completo, CUIL, teléfono, mail ni URL de documentos.
 
@@ -317,7 +339,9 @@ Tamaño: una comisión es del orden de 20 a 50 filas. Entra holgado en Spark. El
 - Archivos adjuntos.
 - Edad persistida.
 - Una semilla de planes, niveles, módulos o materias.
-- Una colección `rac` "vista generada" que reemplace a los documentos. La trayectoria se arma al leer; el ciclo y la acreditación son los datos.
+- Una colección `rac` "vista generada" que reemplace a los documentos. La trayectoria se arma al leer; el RAC abierto y la acreditación son los datos.
+- Cierre de ciclo, cierre masivo y "generar RAC del ciclo siguiente".
+- Una pantalla que copie la matriz del Excel.
 
 ## 5. Roles y permisos
 
@@ -328,9 +352,10 @@ Se mantienen los cuatro roles. Los valores viejos siguen andando hasta que se re
 | Ver padrón (sin DNI completo ni links) | sí | no | sí | no |
 | Ver y editar privado y documentos | sí | no | no | no |
 | Ver semáforo de documentación | sí | no | sí | no |
-| Ver RAC y trayectoria | sí | las materias de sus áreas, en el ciclo que abre | sí, sin el link de Drive | no |
-| Cargar notas del ciclo abierto, en las materias de sus áreas, si el estudiante no está de baja | sí | sí | no | no |
-| Cerrar o reabrir RAC | sí | no | no | no |
+| Ver RAC y trayectoria, separados por modalidad | sí | las materias de sus áreas, en la modalidad que abre | sí, sin el link de Drive | no |
+| Cargar notas del RAC abierto, en las materias de sus áreas y en una modalidad por vez, si el estudiante no está de baja | sí | sí | no | no |
+| Egresar, cerrar por pase de salida, o reabrir un cierre mal cargado | sí | no | no | no |
+| Pasar de nivel en el mismo RAC | sí | no | no | no |
 | Dar de baja y reactivar | sí | no | no. Ve el estado y la fecha, no el motivo | no |
 | Planes de Estudio (alta, niveles, módulos, materias) | sí | no | no | no |
 | Crear equivalencia, sin nota ni fecha | sí | no | lee | no |
@@ -342,7 +367,7 @@ Se mantienen los cuatro roles. Los valores viejos siguen andando hasta que se re
 
 El docente no necesita el padrón: entra a "Mis planillas". Eso ya está bien encaminado y no se abre.
 
-Asignación en `docentes/{uid}.areas`: un mapa de áreas en true. Las claves estables son `matematica`, `naturales`, `sociales`, `ingles`, `lengua` y `atp`. Un docente de Matemática ve todas las materias con esa área, en todos los niveles y en el ciclo que elija. El de ATP ve las materias marcadas como ATP, que en esta sede son las de los módulos 8 y 9 una vez que el admin las cargue con esa área. No hay una clave `plan|materia|año` ni el flag `ensenaM8`. Después de cargar los planes a mano, cada docente se vuelve a guardar en Usuarios: las claves viejas no sirven.
+Asignación en `docentes/{uid}.areas`: un mapa de áreas en true. Las claves estables son `matematica`, `naturales`, `sociales`, `ingles`, `lengua` y `atp`. Un docente de Matemática ve todas las materias con esa área, en todos los niveles, y elige si abre la planilla virtual o la semipresencial. El de ATP ve las materias marcadas como ATP, que en esta sede son las de los módulos 8 y 9 una vez que el admin las cargue con esa área. No hay una clave `plan|materia|año` ni el flag `ensenaM8`. Después de cargar los planes a mano, cada docente se vuelve a guardar en Usuarios: las claves viejas no sirven.
 
 Nadie se autodesigna rol, `disabled` ni `activo`. El autoregistro sigue creando `pendiente`.
 
@@ -353,7 +378,7 @@ Hay que sumar un router (hoy el tablero es un `useState`). Hace falta para la fi
 Inicio según el rol, no un menú de once ítems iguales:
 
 - **Admin:** pendientes del día (pases que vencen en 15 días, documentación incompleta, cola de revisión, equivalencias `falta_asentar`) y acceso al padrón.
-- **Docente:** las materias de su área en el ciclo abierto, agrupadas por nivel. Si tiene una sola, entra directo a esa planilla.
+- **Docente:** elige modalidad (virtual o semipresencial) y después la materia de su área, agrupada por nivel. La grilla que se abre es de una sola modalidad. Si tiene una sola materia en esa modalidad, entra directo.
 - **Lectura:** padrón.
 - **Pendiente:** la pantalla que ya existe, sin datos.
 
@@ -365,9 +390,9 @@ flowchart TD
   existe -->|sí| ficha["Abrir la ficha. No se crea otro"]
   existe -->|DNI inválido| corte["No se inscribe. Queda explicado en pantalla"]
   existe -->|no| identidad["Apellido, nombre, DNI, nacimiento, contacto"]
-  identidad --> cursado["Modalidad, plan de estudio, nivel, cohorte, ciclo abierto"]
+  identidad --> cursado["Modalidad, plan de estudio, nivel, cohorte"]
   cursado --> docs["Lista de trámites y, si hay, un solo link de Drive"]
-  docs --> rac["RAC del ciclo con las materias de ese nivel"]
+  docs --> rac["RAC de ese plan, con las materias de ese nivel"]
   rac --> confirmar["Resumen y confirmar"]
   confirmar --> batch["Un batch: índice, público, privado, RAC, calificaciones, filas de planilla, resumen, log"]
 ```
@@ -376,7 +401,7 @@ Criterios del flujo:
 
 - Primero el DNI, después el resto. El duplicado se detecta antes de tipear la ficha.
 - Apellido y nombre van separados. Se muestran como "Apellido, Nombre".
-- El ciclo tiene que estar abierto, como ahora.
+- No depende de un ciclo lectivo abierto. El alta crea el RAC de ese plan de estudio, o reusa el que ya está abierto. La modalidad elegida define en qué planilla caen las materias.
 - Si el nivel todavía no tiene materias, se puede guardar la ficha y los documentos, y el RAC espera. La app no inventa materias para destrabar el alta.
 - La operación sigue siendo atómica. Con las materias de un solo nivel el batch queda muy por debajo de las 500 operaciones.
 - Lectura no ve este formulario.
@@ -391,16 +416,21 @@ Identidad privada (DNI, CUIL, teléfono, mail, nacimiento) solo en la pestaña d
 
 ### 6.3. RAC
 
-Dos vistas del mismo estudiante:
+La pantalla no se parece a la planilla. Administración y coordinación (admin y lectura) ven a la persona, no un bloque de columnas.
 
-1. **Este ciclo:** materias activas del nivel, editables si el RAC está abierto, el rol alcanza y el estudiante no está de baja. Cerrar (admin) pasa lo no aprobado a `adeuda`, copia lo aprobado a la acreditación permanente y bloquea. Reabrir exige un motivo que va al log. Generar el ciclo siguiente abre el RAC del nivel que sigue en `orden` dentro del mismo plan de estudio, y arrastra lo no aprobado como `Prev`. Si ese nivel no existe, el botón lo dice y no crea un nivel vacío.
-2. **Trayectoria:** las materias que el admin cargó, agrupadas por nivel y por módulo. Nota, fecha, condición, nivel donde se acreditó. Una materia aprobada sigue en esta vista después de la baja. Sirve para imprimir un respaldo de papel. El Libro Matriz no se reemplaza: el pie de la impresión lo dice.
+1. **Lo que está cursando:** materias del RAC abierto, con la modalidad a la vista. Editables si el rol alcanza y el estudiante no está de baja. El listado de la sede se parte en dos: semipresencial y virtual. Se puede quedar en uno solo.
+2. **Trayectoria:** las materias que el admin cargó, agrupadas por nivel y por módulo. Nota, fecha, condición, nivel donde se acreditó. Una materia aprobada sigue acá después de la baja, del pase de nivel y del cierre. Sirve para imprimir un respaldo de papel. El pie dice que el Libro Matriz y el SGE son el registro oficial.
 
-Cerrar el RAC de una persona ya está en la pantalla. Cerrar un nivel entero o toda la sede el mismo día sigue abierto (pregunta 2). Hasta esa respuesta no se arma un cierre masivo: además, un cierre de toda la sede el mismo día puede pasar el cupo de escrituras (sección 8).
+Acciones de admin, sobre esta persona:
+
+- **Pasar de nivel.** Agrega las materias del nivel siguiente al mismo RAC. No cierra nada y no abre otro documento.
+- **Egresar.** Solo si no debe materias. Cierra el RAC.
+- **Pase de salida.** Cierra el RAC y deja en `adeuda` lo que no estaba aprobado.
+- No hay "cerrar el ciclo" ni "generar el RAC del año que viene". La pantalla de Ciclos, si sigue, no escribe sobre los RAC.
 
 ### 6.4. Planilla del docente
 
-Una sola tarea: cargar la nota de este espacio.
+Una sola tarea: cargar la nota de esta materia, en esta modalidad. El título de la pantalla dice la materia, el nivel y si es virtual o semipresencial. No hay una grilla mezclada.
 
 - Al abrir, el foco cae en la primera nota vacía.
 - `1`–`9` carga ese número y baja a la fila siguiente. `0` carga 10.
@@ -485,12 +515,12 @@ La sede entra en Spark con margen, si se respetan estas cotas:
 | Acreditaciones | solo donde hay materia aprobada | Muy por debajo de 1 GiB |
 | Abrir una planilla | una consulta de una comisión, sin las bajas | lejos de decenas de miles de lecturas diarias |
 | Alta | un batch por persona | por debajo de 500 operaciones y del cupo de escrituras |
-| Cierre del RAC de una persona | las materias de ese nivel | entra en un batch. Cerrar toda la sede el mismo día queda para la pregunta 2 y puede pasar el cupo |
+| Cierre del RAC de una persona | las materias de ese RAC | entra en un batch. No hay cierre de toda la sede |
 | Baja | unas pocas escrituras y un borrado de fila por materia del RAC abierto | entra en un solo batch |
 
 No hacen falta Cloud Functions: la regla y el cliente ya cierran el negocio (nota válida, RAC abierto, rol, DNI único). No hace falta Storage: los archivos quedan en Drive. Los vencimientos de pases se calculan al abrir el inicio. App Check se puede sumar después, en Spark, y no es parte de este rediseño.
 
-Blaze se justificaría solo si más adelante piden alguna de estas cosas: subir los escaneos a Firebase, mandar mails o recordatorios solos, o un cierre único de miles de escrituras que no quepa en el cupo del día. Ninguna está en el pedido. Si el cupo gratuito cambia el día de implementar, se relee antes de la carga real; no se asume que el número de hoy es eterno.
+Blaze se justificaría solo si más adelante piden alguna de estas cosas: subir los escaneos a Firebase o mandar mails o recordatorios solos. El cierre masivo de fin de año no está en el pedido: el RAC no se cierra por calendario. Si el cupo gratuito cambia el día de implementar, se relee antes de la carga real; no se asume que el número de hoy es eterno.
 
 ## 9. Impacto en las reglas
 
@@ -508,11 +538,12 @@ Cambios respecto de `firestore.rules`:
 | `planes` y `planes/{id}/espacios` viejos | Dejan de ser el alta de la currícula. Hasta la fase 7 siguen legibles por staff para no romper un RAC de prueba ya escrito; el cliente nuevo no los siembra. |
 | `calificaciones` | `materiaId` igual al id del documento. `fecha` vacía o `aaaa-mm-dd` (se va el tope de 7 caracteres). `Aus` y `OtroPlan` en la condición. Sin campo `tpi`: un write que lo traiga se rechaza. Nota ≥ 6 puede quedar `aprobado` sin otro flag. Docente: solo nota, letras, fecha, uid y estado; RAC abierto; estudiante que no esté de baja; `area` asignada. La condición `Equiv` la puede escribir el docente solo en el segundo paso, si `get` de la equivalencia ya asentada coincide en nota, fecha y materia. Admin: también `OtroPlan`. Delete: no. |
 | `acreditaciones` | Create: admin, o docente si `get` de la equivalencia asentada o de su calificación coincide en nota, materia y uid. Update y delete: no, ni para admin. Lectura lee. La rectificación es un subdocumento de create, solo admin, que no modifica el padre. |
-| `indices/.../filas` | Lectura del listado si `area`, `materiaId` y `anio` del propio documento coinciden con la asignación. Docente actualiza solo los campos de nota y solo si `racAbierto` es true. Create de docente rechazado si el estudiante está de baja. Admin borra la fila al dar de baja y la vuelve a crear al reactivar, solo si no hay acreditación de esa materia. |
+| `indices/.../filas` | El id ya separa nivel, materia y modalidad. Lectura del listado si `area` y `modalidad` del propio documento coinciden con lo que el docente abre. Docente actualiza solo los campos de nota y solo si `racAbierto` es true. Create de docente rechazado si el estudiante está de baja, egresado o con pase. Admin borra la fila al dar de baja, al egresar o al pase de salida, y la vuelve a crear al reactivar, solo si no hay acreditación de esa materia. Cambiar la modalidad mueve la fila de un índice al otro. |
 | `revisiones` | Solo admin. |
 | `equivalencias` | Admin crea con `estudianteId` y `materiaId`. `nota` y `fecha` van las dos vacías, o las dos completas con nota ≥ 6. Docente lee las de su área y, si `estado` es `pendiente`, actualiza solo nota, fecha, letras, `cargadoPor` y `estado`. No cambia materia ni estudiante. Delete solo admin y solo en `pendiente`. |
 | `docentes/{uid}` | Admin escribe. El mapa obligatorio pasa a ser `areas`. Dejan de exigirse `ensenaM8` y las claves `plan|espacio|año`. |
-| `pases`, `logs`, `users`, `ciclos` | Igual en espíritu. |
+| `rac/{id}` | El admin puede pasar `estado` a `cerrado` solo junto con un egreso sin materias pendientes, o con un pase de salida. Volver a `abierto` es la corrección de ese cierre, con log. El docente no cambia el estado. No hay una operación que cierre por año. |
+| `pases`, `logs`, `users` | Igual en espíritu. `ciclos` deja de autorizar un cierre de RAC. |
 | Colecciones viejas | Siguen solo admin hasta la fase 7. Después se niega el acceso en un deploy aparte, cuando ya no haya nada que leer. |
 
 Casos que las pruebas tienen que cubrir, con personas ficticias del emulador:
@@ -526,6 +557,8 @@ Casos que las pruebas tienen que cubrir, con personas ficticias del emulador:
 - Una acreditación ya creada rechaza update y delete, también con un usuario admin de prueba.
 - RAC cerrado rechaza la nota.
 - Estudiante de baja: el docente no le crea fila ni le guarda nota; la calificación que ya estaba sigue legible para admin.
+- La planilla virtual no devuelve filas semipresenciales, ni al revés.
+- Egresar con una materia pendiente se rechaza. El pase de salida cierra igual y deja esa materia en `adeuda`. No existe una función de dominio que cierre todos los RAC de un año.
 - Nota 6.5 pasa; nota 6.25 no; `Aus` pasa sin número.
 - El segundo alta con el mismo DNI falla.
 - Un plan de estudio sin resolución, sin orientación o sin validez nacional se rechaza.
@@ -550,8 +583,8 @@ El script sigue el contrato de `scripts/migracion/migrar.mjs`: `--emulador`, `--
 | Fuente | Qué hace el parser | Qué manda a la cola |
 |---|---|---|
 | LEGAJOS | DNI solo dígitos; apellido y nombre separados lo mejor posible; modalidad; gestión; nivel y cohorte si el texto es `A2026` o similar y ese nivel ya existe en el plan cargado; checklist sin inventar URL. Si hay un link de Drive, va al único campo. No crea planes. | DNI vacío, no numérico o duplicado; plan ilegible (`???`, dos planes, letra sola); nivel que el admin todavía no cargó; "digital en Drive" sin URL; URL de sisfet (no se guarda como segundo link) |
-| RAC 2026 | Por posición: fila de la nómina = bloque. Ignora `#REF!` y fórmulas. Nota numérica de a medio punto. Fecha a ISO, con los formatos mezclados que se puedan reconocer sin ambigüedad. `PLAN X` → `OtroPlan`. Cruza el rótulo `n.m` con `materia.codigo`. Una nota aprobada genera acreditación. | `apro` sin número, `10 (diez)`, fecha ambigua, bloque que no cae en la nómina, código sin materia cargada, pestaña VIRTUALES |
-| VIRTUALES | Cruza por nombre normalizado (sin tildes, espacios simples) contra el padrón ya limpio | Cero coincidencias o más de una |
+| RAC 2026, pestañas A, B y C | Por posición: fila de la nómina = bloque. Ignora `#REF!` y fórmulas. Nota numérica de a medio punto. Fecha a ISO. `PLAN X` en la celda de nota → `OtroPlan`. Cruza el rótulo `n.m` con `materia.codigo`. Una nota aprobada genera acreditación. La modalidad sale de LEGAJOS (`CURSADO`), no de armar un padrón nuevo. | `apro` sin número, `10 (diez)`, fecha ambigua, bloque que no cae en la nómina, código sin materia cargada |
+| VIRTUALES | Misma forma de bloque y los mismos planes. No se crea un nivel "virtual". Cada fila va a la cola porque no hay DNI. La cola puede mostrar un candidato si el nombre coincide con una sola ficha, y secretaría confirma. Al confirmar, `modalidad` queda `virtual` y las notas entran al RAC de ese plan. | Toda la pestaña, hasta que alguien la una. No hay cruce automático |
 | EQUIVALENCIAS | Si trae nota y fecha, queda `asentada` y genera acreditación. Si no trae nota, queda `pendiente` para el docente del área. Alias de espacio → `materia.codigo` | Texto de espacio sin materia cargada |
 | RAC 2020–2025 | Fuera de la primera carga. Después de que LEGAJOS + RAC 2026 estén aceptados, completa acreditaciones que 2026 no trae. No pisa una nota ya cargada | Mismo código con otra nota |
 | `students` / `grades` / `equivalences` | Recién cuando se sepa si en producción hay algo además de pruebas. Si son cuentas de prueba, no se migran: se archivan con las reglas viejas y listo | Cualquier fila cuyo DNI no esté en el padrón limpio |
@@ -576,9 +609,9 @@ Cada fase es un PR aparte. Este documento es la fase 0 y no incluye código. No 
 
 ### Fase 0 — Decisiones
 
-Este plan. Quedan abiertas solo VIRTUALES y el alcance del cierre (sección 12). El resto de las respuestas de Nahuel ya está en las secciones 4, 5, 6, 9 y 10.
+Este plan. Nahuel ya respondió lo que estaba abierto. No quedan preguntas en la sección 12.
 
-Aceptación: el documento describe un alta de plan sin semilla, la baja que saca la fila y conserva la acreditación, nota 6 sin TPI, un solo link de Drive, equivalencias fuera de la inscripción, y docentes por área. No pide asistencia.
+Aceptación: el documento describe un alta de plan sin semilla, la baja que saca la fila y conserva la acreditación, nota 6 sin TPI, un solo link de Drive, equivalencias fuera de la inscripción, docentes por área, la modalidad virtual como campo y no como padrón, el RAC abierto entre años y cerrado solo al egresar o con pase, planillas separadas por modalidad, y el Excel solo como fuente de importación. No pide asistencia.
 
 ### Fase 1 — Modelo de dominio, en pruebas y sin Firebase real
 
@@ -602,11 +635,11 @@ Aceptación, en el emulador o con el proyecto local, con personas ficticias: al 
 
 Grilla de teclado, autoguardado, filas en subcolección, versión móvil.
 
-Aceptación: con una comisión ficticia de ~30, cargar una columna de notas solo con teclado, sin mouse, y ver cada fila en "guardado". Recargar y encontrar las mismas notas. Una nota 6 queda aprobada y la pantalla no muestra TPI. En ancho de teléfono, cargar una nota con el teclado grande. RAC cerrado no acepta la tecla. El docente de Lengua no abre la planilla de Matemática. Después de una baja, esa fila no está; la nota sigue en el RAC al entrar como admin.
+Aceptación: con una comisión ficticia de ~30, cargar una columna de notas solo con teclado, sin mouse, y ver cada fila en "guardado". Recargar y encontrar las mismas notas. Una nota 6 queda aprobada y la pantalla no muestra TPI. En ancho de teléfono, cargar una nota con el teclado grande. RAC cerrado no acepta la tecla. El docente de Lengua no abre la planilla de Matemática. La planilla virtual de esa materia no muestra a quien cursa semipresencial. Después de una baja, esa fila no está; la nota sigue en el RAC al entrar como admin.
 
 ### Fase 5 — Trayectoria, equivalencias, pases, impresión
 
-Aceptación: la trayectoria muestra las materias cargadas en el plan, con huecos explícitos, y sigue mostrando una materia aprobada cuando el estudiante está de baja; el admin crea una equivalencia sin nota y sin fecha, fuera del alta; el docente de esa área carga la nota y la fecha, el de otra área no puede, y al guardar queda `Equiv` con acreditación; reactivar no devuelve esa materia a la planilla; un pase provisorio de más de 60 días aparece vencido en el inicio; la impresión no muestra DNI completo ni el link de Drive, y dice que el Libro Matriz y el SGE son el registro oficial.
+Aceptación: la trayectoria muestra las materias cargadas en el plan, con huecos explícitos, y sigue mostrando una materia aprobada cuando el estudiante está de baja; el admin crea una equivalencia sin nota y sin fecha, fuera del alta; el docente de esa área carga la nota y la fecha, el de otra área no puede, y al guardar queda `Equiv` con acreditación; reactivar no devuelve esa materia a la planilla; pasar de nivel no abre otro RAC y no cierra el actual; egresar con una materia pendiente no cierra; el pase de salida sí cierra; no hay botón de generar el ciclo siguiente ni de cerrar el año; el padrón se ve partido en virtual y semipresencial; un pase provisorio de más de 60 días aparece vencido en el inicio; la impresión no muestra DNI completo ni el link de Drive, y dice que el Libro Matriz y el SGE son el registro oficial.
 
 ### Fase 6 — Importador en seco
 
@@ -622,10 +655,7 @@ Aceptación: el padrón nuevo coincide en conteos con el dry-run aceptado; las p
 
 ## 12. Preguntas para Nahuel
 
-Siguen abiertas estas dos. No traban Planes de Estudio, la ficha ni la planilla de un nivel ya cargado. La pestaña VIRTUALES del RAC 2026 no se importa hasta la primera.
-
-1. **VIRTUALES.** ¿Es el cursado virtual sobre los mismos niveles A, B y C, o es un padrón aparte? En esa pestaña no hay DNI.
-2. **Cierre.** ¿Se cierra el RAC de una persona, el de un nivel, o el de toda la sede el mismo día? Mientras tanto, la pantalla cierra de a una persona.
+No quedan. Las que estaban abiertas ya tienen respuesta en el plan: VIRTUALES es la modalidad virtual de los mismos planes (sección 2.4), el RAC se cierra solo al egresar o con un pase de salida (sección 4.4), la planilla de Drive no se copia como pantalla (sección 2.5) y virtual y semipresencial se cargan por separado (secciones 4.7 y 6.4).
 
 ## 13. Qué queda fuera
 
@@ -635,6 +665,8 @@ Siguen abiertas estas dos. No traban Planes de Estudio, la ficha ni la planilla 
 - Asistencia. Quedó fuera de alcance.
 - Sembrar planes, niveles, módulos o materias, incluidos Arte y Cultura, Deportes, los rótulos del RAC y las seis áreas como si ya fueran materias.
 - TPI, y una URL por cada trámite.
+- Copiar en pantalla la matriz del Excel de RAC.
+- Cerrar el ciclo lectivo o generar un RAC nuevo por año.
 - Mostrar o commitear datos personales, aunque sea "para probar el import".
 - Borrar las colecciones viejas antes de la fase 7.
 - Borrar o reescribir una acreditación, incluso al dar de baja.
@@ -644,10 +676,11 @@ Siguen abiertas estas dos. No traban Planes de Estudio, la ficha ni la planilla 
 | Riesgo | Cómo se contiene |
 |---|---|
 | Alguien siembra `planesSede.ts` o los 42 rótulos y después hay que mudar las notas | No hay botón de sembrar ni escritura al abrir. La clave de la nota es el id de la materia que cargó el admin. El `codigo` `1.3` es solo un cruce para importar. |
-| El docente pisa una acreditación desde la grilla, o la baja la borra | La grilla escribe el ciclo. La acreditación no acepta update ni delete. La baja solo borra filas del índice. `OtroPlan` y `Equiv` no se editan con el teclado. |
+| El docente pisa una acreditación desde la grilla, o la baja la borra | La grilla escribe la materia de esa modalidad. La acreditación no acepta update ni delete. La baja solo borra filas del índice. `OtroPlan` y `Equiv` no se editan con el teclado. |
 | Una materia aprobada vuelve a la planilla al reactivar | La reactivación no crea fila si ya hay acreditación. |
 | La copia de la fila de planilla se desfasa | La calificación manda. Hay reconstrucción de la fila y un estado de error visible. |
-| El cierre de ciclo se come el cupo de escrituras | No se guardan casilleros vacíos. Hasta la pregunta 2 se cierra de a una persona. |
+| Se construye una pantalla calcada del Excel, o se mezclan virtual y semipresencial en la misma grilla | El Excel solo se importa. La grilla es una materia y una modalidad. El padrón se muestra en dos bloques. |
+| Alguien cierra el año y congela notas que siguen cursándose | No hay cierre de ciclo ni RAC por año. El cierre es el egreso o el pase de salida de esa persona. |
 | La importación "arregla" una nota en texto | Eso va a la cola. No se convierte `apro` en un 6. |
 | Un link de DNI queda en un documento que lectura lee | Hay un solo link, en el privado. El público tiene el semáforo, sin URL. |
 | El docente carga una equivalencia de otra área, o la crea en el alta | Crear es solo admin, y no está en la inscripción. La nota la escribe quien tiene esa área, con la materia ya elegida. |
