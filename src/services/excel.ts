@@ -11,8 +11,8 @@ export interface FilaExportacion {
 
 const AVISO = 'Uso interno de la sede. Contiene datos personales (Ley 25.326). No reenviar. La app no reemplaza al Libro Matriz ni al SGE.';
 
-function descargar(wb: XLSX.WorkBook, nombre: string) {
-  XLSX.writeFile(wb, nombre);
+function descargar(libro: XLSX.WorkBook, nombre: string) {
+  XLSX.writeFile(libro, nombre);
 }
 
 function anchos(filas: (string | number | null)[][]) {
@@ -23,7 +23,7 @@ function anchos(filas: (string | number | null)[][]) {
   });
 }
 
-export function exportarDirectorio(filas: FilaExportacion[], anio: number, incluirSensibles: boolean) {
+export function armarDirectorio(filas: FilaExportacion[], anio: number, incluirSensibles: boolean) {
   const encabezado = incluirSensibles
     ? ['Apellido', 'Nombre', 'DNI', 'CUIL', 'Email', 'Teléfono', 'Fecha de nacimiento', 'Plan', 'Orientación', 'Estado', 'Cohorte']
     : ['Apellido', 'Nombre', 'DNI enmascarado', 'Plan', 'Orientación', 'Estado', 'Cohorte'];
@@ -55,10 +55,14 @@ export function exportarDirectorio(filas: FilaExportacion[], anio: number, inclu
   hoja['!cols'] = anchos([encabezado, ...cuerpo]);
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, `Directorio ${anio}`.slice(0, 31));
-  descargar(libro, `CEIJA Higueras directorio ${anio}.xlsx`);
+  return libro;
 }
 
-export function exportarRac(filas: FilaExportacion[], anio: number) {
+export function exportarDirectorio(filas: FilaExportacion[], anio: number, incluirSensibles: boolean) {
+  descargar(armarDirectorio(filas, anio, incluirSensibles), `CEIJA Higueras directorio ${anio}.xlsx`);
+}
+
+export function armarRac(filas: FilaExportacion[]) {
   const libro = XLSX.utils.book_new();
   const aviso = XLSX.utils.aoa_to_sheet([[AVISO]]);
   XLSX.utils.book_append_sheet(libro, aviso, 'Aviso');
@@ -92,7 +96,11 @@ export function exportarRac(filas: FilaExportacion[], anio: number) {
     hoja['!cols'] = anchos([encabezado, ...cuerpo]);
     XLSX.utils.book_append_sheet(libro, hoja, plan.slice(0, 31));
   }
-  descargar(libro, `CEIJA Higueras RAC ${anio}.xlsx`);
+  return libro;
+}
+
+export function exportarRac(filas: FilaExportacion[], anio: number) {
+  descargar(armarRac(filas), `CEIJA Higueras RAC ${anio}.xlsx`);
 }
 
 export interface FilaPlanilla {
@@ -106,7 +114,7 @@ export interface FilaPlanilla {
   estado: string;
 }
 
-export function exportarPlanilla(filas: FilaPlanilla[], titulo: string) {
+export function armarPlanilla(filas: FilaPlanilla[]) {
   const encabezado = ['Apellido', 'Nombre', 'DNI enmascarado', 'Nota', 'En letras / TPI', 'Fecha', 'Condición', 'Estado'];
   const cuerpo = filas.map((fila) => [fila.apellido, fila.nombre, fila.dniEnmascarado, fila.nota, fila.tpi, fila.fecha, fila.condicion, fila.estado]);
   const datos = [[AVISO], encabezado, ...cuerpo];
@@ -114,5 +122,9 @@ export function exportarPlanilla(filas: FilaPlanilla[], titulo: string) {
   hoja['!cols'] = anchos([encabezado, ...cuerpo]);
   const libro = XLSX.utils.book_new();
   XLSX.utils.book_append_sheet(libro, hoja, 'Planilla');
-  descargar(libro, `${titulo}.xlsx`);
+  return libro;
+}
+
+export function exportarPlanilla(filas: FilaPlanilla[], titulo: string) {
+  descargar(armarPlanilla(filas), `${titulo}.xlsx`);
 }

@@ -1,25 +1,57 @@
-# Migración local (esqueleto)
+# Migración del legado al modelo nuevo
 
-Este script **no está listo para correr contra el proyecto real** y no debe hacerlo.
-No incluye datos de estudiantes. No usa la cuenta de servicio. No llama a `ceija12resm`.
+Pasa `students`, `grades`, `equivalences`, `subjects` y `studyPlans` a `estudiantes`, `privado`, `dniIndex`, `rac` y `calificaciones`.
 
-Sirve para dejar escritos los pasos y para ensayar, en el emulador, la lectura de un CSV ya limpiado.
+No borra el legado. No trae legajos reales ni credenciales. El default es **dry-run**: cuenta y lista lo que haría, sin escribir.
 
-## Antes de tocar datos reales
+Un DNI repetido, un DNI inválido o un plan que no es A, B o C queda en "a revisar" y no se toca. Si el DNI ya está en `dniIndex`, no se crea otro estudiante; solo se completan notas que todavía están vacías. Correrlo dos veces no duplica.
 
-1. Congelar las planillas de Drive (copia con fecha).
-2. Normalizar DNI (solo dígitos), nombres y fechas a ISO.
-3. Resolver a mano los duplicados de DNI. Un estudiante por DNI: conservar el registro más completo y el plan más reciente; el plan anterior pasa a historial.
-4. Reconstruir el RAC 2026 por posición de bloque = fila de la lista. Lo que no se pueda emparejar queda en una lista "a revisar". Migrar valores (nota, fecha), nunca fórmulas.
-5. Recién ahí, y en la computadora de quien administra, un script con cuenta de servicio puede escribir en lotes de hasta 400 operaciones. Este repositorio no trae esa cuenta ni ese ejecutable.
+El RAC queda **abierto**. Cerrarlo es un paso aparte, desde Ciclos, cuando el papel y el SGE cierren.
 
-## Ensayo en el emulador
+## Ensayo en el emulador (demo-ceija)
+
+Hace falta tener datos ficticios en las colecciones viejas. El test `tests/migracion-emulador.test.ts` los siembra solo. Para probar el comando a mano, primero cargá ese legado en el emulador (nunca en `ceija12resm`).
 
 ```bash
 firebase emulators:exec --project demo-ceija --only firestore \
-  "node scripts/migracion/migrar.mjs --emulador --dry-run --csv /ruta/al/archivo-limpio.csv"
+  "npx tsx scripts/migracion/migrar.ts --emulador --anio 2026"
+
+firebase emulators:exec --project demo-ceija --only firestore \
+  "npx tsx scripts/migracion/migrar.ts --emulador --anio 2026 --escribir"
 ```
 
-`--dry-run` cuenta filas y DNI repetidos. No escribe.
+Sin `FIRESTORE_EMULATOR_HOST` en localhost, sin `--emulador`, o con un project id que no empiece con `demo-`, el script corta. Si el entorno apunta a `ceija12resm` y a la vez al emulador, también corta.
 
-Sin `FIRESTORE_EMULATOR_HOST`, sin `--emulador`, o con un project id que no empiece con `demo-`, el script sale con error.
+En el emulador, el dry-run no escribe nada. `--escribir` crea un admin técnico `users/migracion` (mail `migracion@example.com`, solo en el emulador) únicamente si hay legajos para copiar o completar, y después escribe con las reglas. Si no hay nada que hacer, no crea ese usuario. En el proyecto real no existe ese usuario: entra la cuenta admin de Nahuel.
+
+El informe muestra apellido, nombre y DNI enmascarado. No imprime DNI completo, CUIL, mail ni teléfono.
+
+## Cómo lo corre Nahuel contra el proyecto real
+
+Eso no se corre desde un agente ni desde CI. En la máquina de quien administra, con una cuenta `admin` ya creada:
+
+1. Hacé una copia de seguridad de Firestore (export o backup de la consola) antes de escribir.
+2. Revisá a mano los DNI duplicados. El script no elige un ganador.
+3. Dry-run, y leé la lista "a revisar":
+
+```bash
+export CEIJA_MIGRACION_REAL=escribo-en-produccion
+export CEIJA_FIREBASE_API_KEY="..."
+export CEIJA_FIREBASE_AUTH_DOMAIN="..."
+export CEIJA_FIREBASE_APP_ID="..."
+export CEIJA_ADMIN_EMAIL="..."
+export CEIJA_ADMIN_PASSWORD="..."
+
+npx tsx scripts/migracion/migrar.ts \
+  --anio 2026 \
+  --confirmar-proyecto ceija12resm \
+  --confirmar-frase "MIGRAR CEIJA"
+```
+
+4. Recién cuando el dry-run cierre, la misma línea más `--escribir`.
+
+Esas variables van en el entorno de esa terminal. No van al repo, no van en la línea de comandos de un alias compartido y no se commitean. El script entra con el mail y la contraseña del admin y escribe con las reglas: puede leer el legado y crear el modelo nuevo, y no puede borrar `students`.
+
+Si `FIRESTORE_EMULATOR_HOST` está definido, el modo real se niega. No mezcles las dos cosas.
+
+Después de escribir, el legado sigue ahí para comparar. Borrarlo es una decisión posterior, fuera de este script.

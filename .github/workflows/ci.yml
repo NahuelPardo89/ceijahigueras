@@ -1,0 +1,29 @@
+# No despliega y no usa el proyecto real ceija12resm.
+# Las reglas corren en el emulador con --project demo-ceija (ver package.json).
+
+name: CI
+
+on:
+  push:
+  pull_request:
+
+jobs:
+  verificar:
+    name: Lint, tipos, tests y build
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: "21"
+      - uses: actions/setup-node@v4
+        with:
+          node-version: "22"
+          cache: npm
+      - run: npm ci
+      - run: npm run lint
+      - run: npm run typecheck
+      - run: npm run test:domain
+      - run: npm run test:rules
+      - run: npm run build

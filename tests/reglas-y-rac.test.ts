@@ -326,3 +326,37 @@ test('crear un estudiante con su RAC es atómico y el DNI no se repite', async (
   const racSiguiente = await getDoc(doc(admin, 'rac', siguienteId));
   assert.ok((racSiguiente.data()?.resumen.adeuda as string[]).includes('Lengua y Literatura'));
 });
+
+test('las colecciones legacy quedan solo lectura para el administrador', async () => {
+  await sembrarUsuarios();
+  await entorno.withSecurityRulesDisabled(async (contexto) => {
+    const db = contexto.firestore();
+    await setDoc(doc(db, 'students', 'est-legacy'), { apellido: 'Prueba', nombre: 'Ficticia', dni: '40111222' });
+    await setDoc(doc(db, 'grades', 'nota-legacy'), { studentId: 'est-legacy', subjectId: 'mat', nota: '8', fecha: '15/03/2026' });
+    await setDoc(doc(db, 'equivalences', 'eq-legacy'), { studentId: 'est-legacy', nombre: 'Inglés', nota: '9', fecha: '15/03/2026' });
+    await setDoc(doc(db, 'subjects', 'mat'), { nombre: 'Matemática', planId: 'plan-a', modulo: 1 });
+    await setDoc(doc(db, 'studyPlans', 'plan-a'), { nombre: 'Plan A', active: true });
+  });
+
+  const admin = entorno.authenticatedContext('admin1').firestore();
+  const legado = entorno.authenticatedContext('legacy1').firestore();
+  const docente = entorno.authenticatedContext('docente1').firestore();
+  const lectura = entorno.authenticatedContext('lectura1').firestore();
+  const rutas = [
+    ['students', 'est-legacy'],
+    ['grades', 'nota-legacy'],
+    ['equivalences', 'eq-legacy'],
+    ['subjects', 'mat'],
+    ['studyPlans', 'plan-a'],
+  ] as const;
+
+  for (const [coleccion, id] of rutas) {
+    await assertSucceeds(getDoc(doc(admin, coleccion, id)));
+    await assertSucceeds(getDoc(doc(legado, coleccion, id)));
+    await assertFails(getDoc(doc(docente, coleccion, id)));
+    await assertFails(getDoc(doc(lectura, coleccion, id)));
+    await assertFails(setDoc(doc(admin, coleccion, `${id}-nuevo`), { nombre: 'No' }));
+    await assertFails(updateDoc(doc(admin, coleccion, id), { nombre: 'Tocado' }));
+    await assertFails(deleteDoc(doc(admin, coleccion, id)));
+  }
+});
