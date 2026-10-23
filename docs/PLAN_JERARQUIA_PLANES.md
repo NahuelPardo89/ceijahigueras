@@ -1,6 +1,10 @@
 # Plan de trabajo: jerarquía de Planes de Estudio
 
-Nahuel aprobó este plan. La corrección del 23 de octubre de 2026 es que la **orientación se mantiene**. El resto queda como estaba. No cambia código, no siembra datos y no se despliega hasta que se ejecute en otro paso.
+Nahuel aprobó este plan. La corrección del 23 de octubre de 2026 es que la **orientación se mantiene**. El resto de las decisiones queda como estaba.
+
+Aclaración posterior: las notas y el resto de los datos que hay hoy son de prueba. No hay nada real. Se puede borrar, cambiar la lógica y la base sin cuidar compatibilidad ni migrar lo existente. El trabajo va por partes: esta etapa es solo Planes de Estudio. RAC, inscripción y planilla se ven después, cuando planes esté terminado.
+
+No cambia código, no siembra datos y no se despliega hasta que se ejecute en otro paso.
 
 Fecha de relevamiento: 23 de octubre de 2026. Rama: `cursor/planes-de-estudio-1b42` (PR #6), apilada sobre `cursor/saneamiento-legado-b791`. La pantalla de este PR todavía no está en producción.
 
@@ -28,10 +32,21 @@ Nahuel aprobó D2–D6 tal cual. D1 queda corregida: la orientación se mantiene
 | D2 | Cómo se llama el hijo del plan | Una sola subcolección, `anios`. En la pantalla el título de la sección es “Planes o años”. Cada ítem tiene un `nombre` libre (“Plan A”, “1° año”, “Plan C”). No hay `codigo` ni `anioCurso` obligatorios, y no hay entidad `niveles`. | Si prefiere otro id de colección (`tramos`), se cambia solo el path. La pantalla sigue diciendo “Planes o años”. |
 | D3 | Materia y área | Se unifican en **asignatura**. Un nombre, un id opaco. No hay un segundo campo `area` / `areaNombre` ni la lista fija Matemática, Naturales, Sociales, Inglés, Lengua, ATP. | Si el área tiene que seguir siendo un grupo (varios profesores de “Matemática” sobre distintas asignaturas), se mantiene un texto libre de área, distinto del nombre, y se dice explícito en la aprobación. |
 | D4 | Código `n.m` (ej. `1.3`) | Se **conserva opcional** en la asignatura, para cruzar con una planilla. Vacío si no hace falta. | Si no lo quiere, se saca en el mismo paso y se borran el validador y la ayuda. |
-| D5 | “Se comparte entre niveles” / M8 | **No entra** en este cambio. El pedido nuevo no lo nombra. El M8 compartido sigue viviendo en el modelo viejo (`planes` / `compartidoM8`) hasta que se migre la planilla. | Si lo necesita ya, se deja una casilla en la asignatura, destildada, sin sembrar un módulo compartido. |
+| D5 | “Se comparte entre niveles” / M8 | **No entra** en este cambio. El pedido nuevo no lo nombra. El M8 compartido sigue en el modelo viejo (`planes` / `compartidoM8`) hasta la etapa de la planilla. | Si lo necesita ya, se deja una casilla en la asignatura, destildada, sin sembrar un módulo compartido. |
 | D6 | Pantallas viejas | Esta ejecución **no** las cambia. Inscripción, planilla, RAC, usuarios, ciclos, exportar y la landing siguen leyendo lo que leen hoy. | Si quiere que el alta de estudiantes ya use el árbol nuevo, es otro tramo, después de este. |
 
 “El usuario elige el nombre” se lee así: hay un solo tipo de hijo, y el nombre de cada uno lo escribe secretaría. No se agrega un ajuste del sistema para elegir si la sección se llama “plan” o “año”.
+
+## Alcance de esta etapa
+
+Solo el árbol de Planes de Estudio:
+
+- el plan (nombre, validez nacional, resolución, orientación)
+- los planes o años
+- los módulos
+- las asignaturas
+
+RAC, inscripción, planilla, usuarios, ciclos, exportar, equivalencias, la landing y la colección vieja `planes` quedan para etapas posteriores. Se encaran de a una, recién cuando esta esté cerrada. No se escribe un script de migración: lo que haya cargado es de prueba y se puede borrar.
 
 ## Qué hay hoy
 
@@ -107,6 +122,8 @@ Eso es copy de la página de inicio, no la currícula con la que se toman notas.
 
 ### 4. Pantallas que siguen en el modelo viejo
 
+Quedan fuera de esta etapa. Los datos que muestran son de prueba y no condicionan el cambio de planes.
+
 Colección `planes/{planId}` con campos de `Plan` en `src/domain/types.ts` (`codigo`, `anioPlan`, `ciclo` CB/CO, `resolucionCurricular`, `resolucionDistancia`, `orientacion`, `version`, `activo`, `nombre`) y subcolección `espacios` (`nombre`, `modulo`, `area`, `orden`, `compartidoM8`, `tipo` EC/ATP). Reglas: `firestore.rules`, match `/planes/{planId}` y `/espacios/{espacioId}`: el staff lee, el admin escribe. Sin el validador estricto del árbol nuevo.
 
 | Pantalla | Archivo | Qué lee |
@@ -120,7 +137,7 @@ Colección `planes/{planId}` con campos de `Plan` en `src/domain/types.ts` (`cod
 | Equivalencias | `src/components/admin/EquivalenciasPanel.tsx` | Calificaciones del RAC (`espacioId`), no el árbol de planes. |
 | Reglas de notas | `firestore.rules` `puedeDocenteEditarNota` | El docente edita si tiene `espacios[planId\|espacioId\|anio]` o si la nota es `compartidoM8` y `ensenaM8`. No mira `planesEstudio`. |
 
-El estudiante guarda `planActualId` y `orientacion` (`src/domain/types.ts`, `EstudiantePublico` y `ResumenItem`). Eso sale del plan viejo en el momento del alta. Cambiar el catálogo después no reescribe fichas ya guardadas.
+El estudiante guarda `planActualId` y `orientacion` (`src/domain/types.ts`, `EstudiantePublico` y `ResumenItem`). Esta etapa no las toca. Cuando se haga la inscripción, esas fichas de prueba se pueden borrar y volver a cargar.
 
 ### 5. Tests de este PR
 
@@ -131,7 +148,7 @@ El estudiante guarda `planActualId` y `orientacion` (`src/domain/types.ts`, `Est
 
 ### 6. Datos ya cargados
 
-Este PR no está desplegado. `planesEstudio` no debería tener documentos reales en `ceija12resm`. Lo que haya en el emulador local es de prueba y se puede descartar. No hace falta un script que copie `niveles` → `anios` en producción. No se corre nada contra el proyecto real.
+Son de testeo: notas, estudiantes, planes y lo demás. No hay legajos reales. No hace falta un script que copie `niveles` a `anios`, ni conservar ids viejos, ni cuidar lo que haya en el emulador. Si estorba, se borra. No se copia `PLANES_SEDE` al árbol nuevo: eso sigue siendo un catálogo fijo, no un resguardo de datos.
 
 ## Brecha
 
@@ -206,21 +223,19 @@ No van `codigo` ni `anioCurso`. El orden alcanza para saber cuál va primero cua
 
 No van `area`, `areaNombre` ni `comparteEntreNiveles` (D3 y D5).
 
-La asignatura **es** el área a los efectos de la asignación. Cuando se migre Usuarios, la clave del docente apunta al id opaco de la asignatura (estable aunque le cambien el nombre), no a un slug del nombre y no a la lista Matemática/Naturales/…. Hasta ese día, `docentes.areas` queda sin escritor y sin lector de pantalla. Las reglas nuevas de `asignaturas` dejan de exigir `areaAsignada`: admin y lectura leen; el docente no lista este árbol hasta que la planilla lo use. Así no queda una regla que mira un mapa que nadie carga.
+La asignatura **es** el área a los efectos de la asignación. Eso se usa en la etapa de usuarios y planilla, no ahora. La clave del docente va a apuntar al id opaco de la asignatura (estable aunque le cambien el nombre), no a un slug ni a la lista Matemática/Naturales/…. En esta etapa `docentes.areas` no se escribe. Las reglas nuevas de `asignaturas` no exigen `areaAsignada`: admin y lectura leen; el docente no lista este árbol hasta la etapa de la planilla.
 
-`copiaParaCalificacion` pasa a copiar `asignaturaId` también en `espacioId`, y el nombre del módulo en `modulo`, para que el día que el RAC lea este árbol el documento de la nota siga teniendo la forma actual. No se llama desde inscripción en este tramo.
+`copiaParaCalificacion` no se usa en esta etapa. No hace falta imitar el documento viejo de la nota (`espacioId`, `compartidoM8`) para cuidar datos de prueba. El id opaco de la asignatura sí queda, para que el RAC lo use cuando le toque.
 
 ### Integridad
 
-- Borrar plan, plan/año, módulo o asignatura solo si `enUso` no es `true` y ningún hijo está en uso. Si ya hay notas o inscripciones, el botón no está: se desactiva (`activo: false` en plan o asignatura).
-- Editar un plan ya usado: se puede cambiar nombre, orientación, resolución, validez, nombres, orden, código y `activo`. No se puede cambiar el id. Las notas ya guardadas conservan el nombre que se copió al abrir el RAC. Las notas nuevas usan el nombre vigente.
-- `enUso` no vuelve a `false`. Hoy nada lo pone en `true`. Sigue siendo un hueco: hay que marcarlo en el mismo paso en que se escriba la primera nota o la inscripción (plan, plan/año, módulo y asignatura juntos, porque las reglas no pueden listar hijos). Ese cable es un tramo posterior, no este.
-- El batch de borrado sigue con tope 450. Un plan de la sede no llega a ese número. Si llegara, el borrado tiene que partirse; no hace falta Cloud Functions.
-- No se reescriben `estudiantes`, `rac` ni `calificaciones` al editar el catálogo.
+La regla de no borrar lo que tenga notas se mantiene, porque es del producto y no de los datos de hoy. Cuando una asignatura, un módulo, un plan/año o el plan tenga notas, `enUso` queda en true: no se borra y no vuelve a false. Si no tiene que entrar en altas nuevas, se desactiva (`activo: false` en el plan o en la asignatura). Las notas que existan ahora son de prueba y se pueden borrar enteras; no hay que conservarlas para poder cambiar el modelo.
 
-### Qué no se migra en datos
+Esta etapa no conecta `enUso` con el RAC ni con la inscripción. El campo y la regla quedan listos para esa etapa. Ahí se marca `enUso` en la asignatura, el módulo, el plan/año y el plan juntos, porque las reglas no pueden listar hijos.
 
-No hay documentos reales de `planesEstudio` publicados. No se escribe un script de migración ni un seed. Si el emulador tiene planes de prueba con `niveles` y `orientacion`, se borran a mano en el emulador o se ignora: son ficticios. No se copia `PLANES_SEDE` al árbol nuevo. No se toca `ceija12resm`.
+- Editar sigue pudiendo cambiar nombre, orientación, resolución, validez, nombres, orden, código y `activo`. El id no cambia, para que una nota futura siga apuntando al mismo documento.
+- El batch de borrado sigue con tope 450. Un plan de la sede no llega a ese número. Si llegara, el borrado se parte. No hace falta Cloud Functions.
+- Esta etapa no escribe `estudiantes`, `rac` ni `calificaciones`.
 
 ## Pasos de ejecución
 
@@ -238,8 +253,8 @@ Archivos: `src/domain/planesEstudio.ts`, `tests/planes-estudio.test.ts`.
 - Borrar `NivelEstudio`, `DatosNivel`, `prepararNivel`. Agregar el plan/año (`nombre`, `orden`) con los mismos topes de texto y de orden que hoy tiene el módulo.
 - Renombrar materia → asignatura en tipos y en `prepararMateria`. Sacar `area`, `areaNombre`, `claveArea` como requisito, `resolverArea`, `AREAS_SUGERIDAS`, `areasDelArbol` y `comparteEntreNiveles`.
 - Dejar `codigoMateriaValido` si D4 se aprueba como está.
-- `puedeAbrirRacEnNivel` pasa a mirar asignaturas activas del plan/año.
-- `copiaParaCalificacion` deja de emitir `compartidoM8` desde un checkbox de área. Hasta que la planilla migre, esa copia puede mandar `compartidoM8: false` fijo, documentado en el test, porque el RAC nuevo todavía no se abre desde este árbol.
+- `puedeAbrirRacEnNivel` pasa a mirar asignaturas activas del plan/año. El alta del RAC no se conecta en esta etapa.
+- No adaptar el documento de la nota. El helper de copia, si queda, no tiene que repetir `espacioId` ni `compartidoM8` para parecerse a lo viejo. El id opaco de la asignatura se mantiene.
 
 Criterio: un plan válido no trae planes/años ni asignaturas. Falta el nombre, la orientación, la validez o la resolución → error. Un plan/año sin nombre → error. Una asignatura sin área aparte es válida. El id no cambia al renombrar. El fuente del dominio no menciona `PLANES_SEDE`, `cargarPlanesSede` ni `AREAS_SUGERIDAS`. El test deja de tratar la orientación como título y afirma que viaja junto con el nombre.
 
@@ -287,9 +302,9 @@ Archivo: `AGENTS.md`.
 
 Actualizar la tabla y el párrafo de Planes de Estudio: nombre, orientación, validez, resolución; el título es el nombre; hijos “planes o años”; módulos; asignaturas; sin seed; `planesSede.ts` sigue alimentando solo la colección vieja.
 
-### Paso 6. Lo que este tramo no toca
+### Paso 6. Lo que esta etapa no toca
 
-Dejar como están, y verificar que sus tests sigan verdes:
+Son las etapas de después. No se editan ahora. Sus tests tienen que seguir verdes porque estos archivos no cambian, no porque haya que resguardar datos:
 
 - `src/domain/planesSede.ts`, `src/services/escolar.ts` (`cargarPlanesSede`, `listarPlanes`, `espaciosDePlan`), `scripts/seed-emulador.ts`, `src/domain/migracion.ts`, `src/services/migracion.ts`.
 - `src/components/admin/EstudiantesPanel.tsx`, `UsuariosPanel.tsx`, `PlanillaDocente.tsx`, `RacPanel.tsx`, `CiclosPanel.tsx`, `ExportarPanel.tsx`, `EquivalenciasPanel.tsx`.
@@ -297,23 +312,21 @@ Dejar como están, y verificar que sus tests sigan verdes:
 - `src/domain/claves.ts`, `src/domain/rac.ts`, reglas de `rac` y de `planes`.
 - Tests `tests/domain.test.ts`, `tests/reglas-y-rac.test.ts`, `tests/excel.test.ts`, `tests/migracion.test.ts`, `tests/migracion-emulador.test.ts`.
 
-## Tramo siguiente (no ejecutar con este plan)
+## Etapas posteriores
 
-Cuando Nahuel pida que las notas y la inscripción usen el árbol nuevo:
+Se hacen de a una, después de cerrar planes. No hay migración: las notas y fichas de prueba se pueden borrar y volver a cargar sobre el árbol nuevo.
 
-1. El alta de estudiante elige un plan de estudio y un plan/año, y abre el RAC con las asignaturas activas. `planActualId` pasa a ser el id del plan/año (o del plan de estudio: **decisión abierta**, porque hoy es un solo id). La columna `orientacion` del estudiante, si sigue, copia el campo `orientacion` del plan de estudio.
+1. Inscripción: el alta elige un plan de estudio y un plan/año, y abre el RAC con las asignaturas activas. `planActualId` pasa a ser el id del plan/año o el del plan de estudio (se decide en esa etapa). La columna `orientacion` del estudiante, si sigue, copia el campo `orientacion` del plan.
 2. Al escribir la primera nota o la inscripción, marcar `enUso` en asignatura, módulo, plan/año y plan en el mismo batch.
-3. Usuarios asigna docentes por id de asignatura. Recién ahí la regla del docente vuelve a leer esa asignación. Se deja de usar `docentes.areas` por slug.
-4. Planilla, RAC, ciclos, exportar y equivalencias leen el árbol nuevo. Recién ahí se puede dejar de llamar `cargarPlanesSede` desde el seed y la migración, y revisar si `PLANES_SEDE` se archiva.
-5. La landing (`sedePublica.ts`) se edita a mano si los textos públicos tienen que coincidir con lo que secretaría cargó. No se generan solos desde Firestore en este sistema (Spark, sin funciones).
+3. Usuarios asigna docentes por id de asignatura. Ahí la regla del docente vuelve a leer esa asignación.
+4. Planilla, RAC, ciclos, exportar y equivalencias. En esa etapa se revisa si `PLANES_SEDE` y el seed siguen haciendo falta.
+5. La landing (`sedePublica.ts`) se edita a mano si los textos públicos tienen que coincidir con lo que secretaría cargó. No se generan solos desde Firestore (Spark, sin funciones).
 
 ## Riesgos
 
-- **Dos currículas a la vez.** Después de este cambio, Planes de Estudio muestra el árbol nuevo y Estudiantes sigue ofreciendo A/B/C viejos si alguien corrió `cargarPlanesSede`. Es el mismo riesgo de hoy. Hay que decirlo en la pantalla o en el manual hasta el tramo siguiente, para que no carguen el plan “de verdad” en un lado y anoten en el otro.
-- **`orientacion` en fichas ya existentes.** Vive en `estudiantes` y en el resumen, copiada del plan viejo. Este cambio no las toca. En el plan nuevo el campo sigue, aparte del nombre.
-- **Reglas de docente.** Sacar `areaAsignada` de `asignaturas` deja al docente sin lectura de este árbol hasta el tramo de la planilla. Es a propósito: hoy esa regla no tiene datos detrás.
+- **Pantallas viejas todavía en el código.** Estudiantes, RAC y planilla siguen leyendo `planes` hasta su etapa. No es un problema de datos: lo que hay es de prueba. Esta etapa no las mezcla con el árbol nuevo.
+- **Reglas de docente.** Sacar `areaAsignada` de `asignaturas` deja al docente sin lectura de este árbol hasta la etapa de la planilla. Es a propósito.
 - **Landing y `PLANES_SEDE` desalineados** entre sí y con el ejemplo de Nahuel. Cualquier seed “para que se vea algo” volvería a congelar una de esas versiones. No se hace.
-- **Renombrar paths** (`niveles` → `anios`, `materias` → `asignaturas`) rompe documentos de prueba del emulador. No rompe producción mientras el PR no se despliegue. No incluir en el deploy de reglas un borrado de `planes` viejo.
 - **“Plan” significa dos cosas** (el plan de estudio y el plan/año de adentro). La pantalla tiene que decir “Plan de estudio” arriba y “Planes o años” en la sección, para que no se mezclen.
 
 ## Futuro / fuera de alcance
