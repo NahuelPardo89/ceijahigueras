@@ -2,162 +2,127 @@ import { readFileSync } from 'node:fs';
 import test from 'node:test';
 import assert from 'node:assert/strict';
 import {
-  AREAS_SUGERIDAS,
-  claveArea,
+  asignaturasActivas,
   codigoMateriaValido,
-  copiaParaCalificacion,
-  idCalificacionDeMateria,
-  materiasActivas,
-  puedeAbrirRacEnNivel,
+  idAsignatura,
+  puedeAbrirRacEnAnio,
   puedeEliminarContenedor,
   puedeEliminarPorUso,
-  prepararMateria,
-  prepararNivel,
+  prepararAnio,
+  prepararAsignatura,
   prepararPlanEstudio,
-  resolverArea,
-  type MateriaEstudio,
+  type AsignaturaEstudio,
 } from '../src/domain/planesEstudio.ts';
 
-function materia(parcial: Partial<MateriaEstudio> = {}): MateriaEstudio {
+function asignatura(parcial: Partial<AsignaturaEstudio> = {}): AsignaturaEstudio {
   return {
-    id: 'mat-1',
+    id: 'asig-1',
     nombre: 'Matemática de prueba',
     orden: 1,
-    area: 'matematica',
-    areaNombre: 'Matemática',
     codigo: '1.3',
-    comparteEntreNiveles: false,
     activo: true,
     enUso: false,
     ...parcial,
   };
 }
 
-test('el alta del plan exige resolución, orientación y validez nacional', () => {
-  assert.equal(prepararPlanEstudio({
-    orientacion: 'Orientación de prueba',
-    resolucion: 'Resolución de prueba',
-    validezNacional: 'Validez de prueba',
-  }).ok, true);
-  assert.equal(prepararPlanEstudio({ orientacion: '  ', resolucion: 'R', validezNacional: 'V' }).ok, false);
-  assert.equal(prepararPlanEstudio({ orientacion: 'O', resolucion: '', validezNacional: 'V' }).ok, false);
-  assert.equal(prepararPlanEstudio({ orientacion: 'O', resolucion: 'R', validezNacional: '' }).ok, false);
+const planCompleto = {
+  nombre: 'Plan de prueba',
+  orientacion: 'Orientación de prueba',
+  resolucion: 'Resolución de prueba',
+  validezNacional: 'Validez de prueba',
+};
+
+test('el alta del plan exige nombre, orientación, resolución y validez nacional', () => {
+  assert.equal(prepararPlanEstudio(planCompleto).ok, true);
+  assert.equal(prepararPlanEstudio({ ...planCompleto, nombre: '  ' }).ok, false);
+  assert.equal(prepararPlanEstudio({ ...planCompleto, orientacion: '' }).ok, false);
+  assert.equal(prepararPlanEstudio({ ...planCompleto, resolucion: '' }).ok, false);
+  assert.equal(prepararPlanEstudio({ ...planCompleto, validezNacional: '' }).ok, false);
 });
 
-test('un plan recién validado no trae niveles ni materias', () => {
-  const preparado = prepararPlanEstudio({
-    orientacion: 'Orientación de prueba',
-    resolucion: 'Resolución de prueba',
-    validezNacional: 'Validez de prueba',
-  });
+test('un plan recién validado no trae años ni asignaturas, y el nombre viaja con la orientación', () => {
+  const preparado = prepararPlanEstudio(planCompleto);
   assert.equal(preparado.ok, true);
   if (!preparado.ok) return;
-  assert.deepEqual(Object.keys(preparado.datos).sort(), ['orientacion', 'resolucion', 'validezNacional']);
+  assert.deepEqual(Object.keys(preparado.datos).sort(), ['nombre', 'orientacion', 'resolucion', 'validezNacional']);
+  assert.equal(preparado.datos.nombre, 'Plan de prueba');
+  assert.equal(preparado.datos.orientacion, 'Orientación de prueba');
+  assert.notEqual(preparado.datos.nombre, preparado.datos.orientacion);
 });
 
-test('el dominio no devuelve la semilla de planesSede', () => {
+test('el dominio no devuelve la semilla de planesSede ni un catálogo de áreas', () => {
   const fuente = readFileSync(new URL('../src/domain/planesEstudio.ts', import.meta.url), 'utf8');
   assert.equal(fuente.includes('planesSede'), false);
   assert.equal(fuente.includes('PLANES_SEDE'), false);
   assert.equal(fuente.includes('cargarPlanesSede'), false);
+  assert.equal(fuente.includes('AREAS_SUGERIDAS'), false);
 });
 
-test('el nivel pide código, año y nombre, y no se inventa A, B y C', () => {
-  assert.equal(prepararNivel({ codigo: '', anioCurso: 1, nombre: '1° año', orden: 1 }).ok, false);
-  const listo = prepararNivel({ codigo: 'A', anioCurso: 1, nombre: '1° año', orden: 1 });
+test('el plan o año pide nombre y orden, sin código ni año numérico', () => {
+  assert.equal(prepararAnio({ nombre: '', orden: 1 }).ok, false);
+  const listo = prepararAnio({ nombre: 'Plan A', orden: 1 });
   assert.equal(listo.ok, true);
-  if (listo.ok) assert.equal(listo.datos.codigo, 'A');
-  assert.equal(prepararNivel({ codigo: 'B', anioCurso: 2, nombre: '2° año', orden: 2 }).ok, true);
-  assert.equal(prepararNivel({ codigo: 'C', anioCurso: 3, nombre: '3° año', orden: 3 }).ok, true);
-  assert.equal(prepararNivel({ codigo: 'D', anioCurso: 4, nombre: 'Otro', orden: 4 }).ok, true);
-  assert.equal(prepararNivel({ codigo: 'A', anioCurso: 0, nombre: '1° año', orden: 1 }).ok, false);
+  if (listo.ok) {
+    assert.equal(listo.datos.nombre, 'Plan A');
+    assert.equal(listo.datos.orden, 1);
+    assert.equal('codigo' in listo.datos, false);
+    assert.equal('anioCurso' in listo.datos, false);
+  }
+  assert.equal(prepararAnio({ nombre: '1° año', orden: 2 }).ok, true);
+  assert.equal(prepararAnio({ nombre: 'Plan A', orden: 0 }).ok, false);
 });
 
-test('las áreas sugeridas son las de la sede y se puede escribir otra', () => {
-  assert.deepEqual(AREAS_SUGERIDAS.map((area) => area.clave), [
-    'matematica', 'naturales', 'sociales', 'ingles', 'lengua', 'atp',
-  ]);
-  assert.equal(claveArea('Matemática'), 'matematica');
-  assert.equal(claveArea('ATP'), 'atp');
-  assert.equal(claveArea('Educación Física'), 'educacion-fisica');
-  assert.equal(claveArea('   '), null);
-  const otra = resolverArea('__otra', 'Educación Física', AREAS_SUGERIDAS);
-  assert.deepEqual(otra, { area: 'educacion-fisica', areaNombre: 'Educación Física' });
-  const sugerida = resolverArea('lengua', '', AREAS_SUGERIDAS);
-  assert.deepEqual(sugerida, { area: 'lengua', areaNombre: 'Lengua' });
-});
-
-test('la materia exige área y el código es opcional con forma n.m', () => {
+test('la asignatura no pide un área aparte y el código es opcional con forma n.m', () => {
   assert.equal(codigoMateriaValido(''), true);
   assert.equal(codigoMateriaValido('1.3'), true);
   assert.equal(codigoMateriaValido('9.12'), true);
   assert.equal(codigoMateriaValido('1'), false);
   assert.equal(codigoMateriaValido('modulo.1'), false);
-  const sinArea = prepararMateria({
-    nombre: 'Sin área',
-    orden: 1,
-    area: '',
-    areaNombre: '',
+  const sinNombre = prepararAsignatura({ nombre: '  ', orden: 1, codigo: '', activo: true });
+  assert.equal(sinNombre.ok, false);
+  const libre = prepararAsignatura({
+    nombre: 'Educación Física de prueba',
+    orden: 3,
     codigo: '',
-    comparteEntreNiveles: false,
     activo: true,
   });
-  assert.equal(sinArea.ok, false);
-  const conCodigo = prepararMateria({
+  assert.equal(libre.ok, true);
+  if (libre.ok) {
+    assert.equal(libre.datos.codigo, '');
+    assert.equal('area' in libre.datos, false);
+  }
+  const conCodigo = prepararAsignatura({
     nombre: 'Matemática de prueba',
-    orden: 3,
-    area: 'matematica',
-    areaNombre: 'Matemática',
+    orden: 1,
     codigo: '1.3',
-    comparteEntreNiveles: false,
     activo: true,
   });
   assert.equal(conCodigo.ok, true);
-  if (conCodigo.ok) {
-    assert.equal(conCodigo.datos.comparteEntreNiveles, false);
-    assert.equal(conCodigo.datos.codigo, '1.3');
-  }
-  const compartida = prepararMateria({
-    nombre: 'Taller de prueba',
-    orden: 1,
-    area: 'atp',
-    areaNombre: 'ATP',
-    codigo: '8.1',
-    comparteEntreNiveles: true,
-    activo: true,
-  });
-  assert.equal(compartida.ok, true);
+  if (conCodigo.ok) assert.equal(conCodigo.datos.codigo, '1.3');
 });
 
-test('un nivel sin materias activas no abre RAC', () => {
-  assert.equal(puedeAbrirRacEnNivel([]), false);
-  assert.equal(puedeAbrirRacEnNivel([materia({ activo: false })]), false);
-  assert.equal(puedeAbrirRacEnNivel([materia()]), true);
-  assert.deepEqual(materiasActivas([
-    materia({ id: 'b', orden: 2, nombre: 'Lengua de prueba' }),
-    materia({ id: 'a', orden: 1, activo: false }),
-    materia({ id: 'c', orden: 1, nombre: 'Otra' }),
+test('un plan o año sin asignaturas activas no abre RAC', () => {
+  assert.equal(puedeAbrirRacEnAnio([]), false);
+  assert.equal(puedeAbrirRacEnAnio([asignatura({ activo: false })]), false);
+  assert.equal(puedeAbrirRacEnAnio([asignatura()]), true);
+  assert.deepEqual(asignaturasActivas([
+    asignatura({ id: 'b', orden: 2, nombre: 'Lengua de prueba' }),
+    asignatura({ id: 'a', orden: 1, activo: false }),
+    asignatura({ id: 'c', orden: 1, nombre: 'Otra' }),
   ]).map((item) => item.id), ['c', 'b']);
 });
 
-test('la materia en uso no se borra, y el id de la calificación no cambia al renombrar', () => {
+test('la asignatura en uso no se borra, y el id no cambia al renombrar', () => {
   assert.equal(puedeEliminarPorUso(false), true);
   assert.equal(puedeEliminarPorUso(true), false);
   assert.equal(puedeEliminarContenedor(false, [{ enUso: false }]), true);
   assert.equal(puedeEliminarContenedor(false, [{ enUso: true }]), false);
   assert.equal(puedeEliminarContenedor(true, []), false);
 
-  const original = materia({ id: 'opaque-1', nombre: 'Matemática de prueba' });
-  const copia = copiaParaCalificacion(original, 'Módulo 1');
-  const renombrada = { ...original, nombre: 'Matemática avanzada' };
-  const segunda = copiaParaCalificacion(renombrada, 'Módulo 1');
-  assert.equal(idCalificacionDeMateria(original.id), 'opaque-1');
-  assert.equal(copia.materiaId, 'opaque-1');
-  assert.equal(copia.espacioId, 'opaque-1');
-  assert.equal(segunda.materiaId, copia.materiaId);
-  assert.equal(copia.nombre, 'Matemática de prueba');
-  assert.equal(segunda.nombre, 'Matemática avanzada');
-  assert.equal(copia.codigo, '1.3');
-  assert.equal(copia.area, 'matematica');
-  assert.equal(copia.compartidoM8, false);
+  const original = asignatura({ id: 'opaque-1', nombre: 'Matemática de prueba' });
+  const renombrada = { ...original, nombre: 'Matemática aplicada de prueba' };
+  assert.equal(idAsignatura(original.id), 'opaque-1');
+  assert.equal(idAsignatura(renombrada.id), idAsignatura(original.id));
+  assert.notEqual(renombrada.nombre, original.nombre);
 });

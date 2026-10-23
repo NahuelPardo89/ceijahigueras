@@ -13,16 +13,14 @@ import {
   doc,
   getDoc,
   getDocs,
-  query,
   setDoc,
   updateDoc,
-  where,
 } from 'firebase/firestore';
-import { idCalificacionDeMateria } from '../src/domain/planesEstudio.ts';
+import { idAsignatura } from '../src/domain/planesEstudio.ts';
 import {
-  crearMateria,
+  crearAnio,
+  crearAsignatura,
   crearModulo,
-  crearNivel,
   crearPlanEstudio,
   leerArbolPlan,
   PlanEstudioError,
@@ -40,6 +38,7 @@ const usuario = (uid: string, role: string) => ({
 });
 
 const planDatos = (uid: string, extra: Record<string, unknown> = {}) => ({
+  nombre: 'Plan de prueba',
   orientacion: 'Orientación de prueba',
   resolucion: 'Resolución de prueba',
   validezNacional: 'Validez de prueba',
@@ -50,50 +49,33 @@ const planDatos = (uid: string, extra: Record<string, unknown> = {}) => ({
   ...extra,
 });
 
-const nivelDatos = {
-  codigo: 'A',
-  anioCurso: 1,
-  nombre: '1° año',
-  orden: 1,
-  enUso: false,
-};
+const anioDatos = { nombre: 'Plan A', orden: 1, enUso: false };
 
 const moduloDatos = { nombre: 'Módulo 1', orden: 1, enUso: false };
 
-const materiaDatos = (extra: Record<string, unknown> = {}) => ({
+const asignaturaDatos = (extra: Record<string, unknown> = {}) => ({
   nombre: 'Matemática de prueba',
   orden: 1,
-  area: 'matematica',
-  areaNombre: 'Matemática',
   codigo: '1.3',
-  comparteEntreNiveles: false,
   activo: true,
   enUso: false,
   ...extra,
 });
+
+const alta = {
+  nombre: 'Plan de prueba',
+  orientacion: 'Orientación de prueba',
+  resolucion: 'Resolución de prueba',
+  validezNacional: 'Validez de prueba',
+};
 
 async function sembrarUsuarios() {
   await entorno.withSecurityRulesDisabled(async (contexto) => {
     const db = contexto.firestore();
     await setDoc(doc(db, 'users', 'admin1'), usuario('admin1', 'admin'));
     await setDoc(doc(db, 'users', 'docente1'), usuario('docente1', 'docente'));
-    await setDoc(doc(db, 'users', 'docente2'), usuario('docente2', 'docente'));
     await setDoc(doc(db, 'users', 'lectura1'), usuario('lectura1', 'lectura'));
     await setDoc(doc(db, 'users', 'pendiente1'), usuario('pendiente1', 'pendiente'));
-    await setDoc(doc(db, 'docentes', 'docente1'), {
-      claves: [],
-      espacios: {},
-      planesAnio: {},
-      ensenaM8: false,
-      areas: { matematica: true },
-    });
-    await setDoc(doc(db, 'docentes', 'docente2'), {
-      claves: [],
-      espacios: {},
-      planesAnio: {},
-      ensenaM8: false,
-      areas: { lengua: true },
-    });
   });
 }
 
@@ -116,43 +98,39 @@ beforeEach(async () => {
   await entorno.clearFirestore();
 });
 
-test('el admin crea un plan vacío y después un nivel, un módulo y una materia', async () => {
+test('el admin crea un plan vacío y después un plan o año, un módulo y una asignatura', async () => {
   await sembrarUsuarios();
   const admin = entorno.authenticatedContext('admin1').firestore();
-  const planId = await crearPlanEstudio(admin, 'admin1', {
-    orientacion: 'Orientación de prueba',
-    resolucion: 'Resolución de prueba',
-    validezNacional: 'Validez de prueba',
-  });
+  const planId = await crearPlanEstudio(admin, 'admin1', alta);
   const vacio = await leerArbolPlan(admin, planId);
-  assert.equal(vacio.niveles.length, 0);
+  assert.equal(vacio.anios.length, 0);
+  assert.equal(vacio.plan.nombre, 'Plan de prueba');
+  assert.equal(vacio.plan.orientacion, 'Orientación de prueba');
   assert.equal(vacio.plan.enUso, false);
 
-  const nivelId = await crearNivel(admin, planId, { codigo: 'A', anioCurso: 1, nombre: '1° año', orden: 1 });
-  const moduloId = await crearModulo(admin, planId, nivelId, { nombre: 'Módulo 1', orden: 1 });
-  const materiaId = await crearMateria(admin, planId, nivelId, moduloId, {
+  const anioId = await crearAnio(admin, planId, { nombre: 'Plan A', orden: 1 });
+  const moduloId = await crearModulo(admin, planId, anioId, { nombre: 'Módulo 1', orden: 1 });
+  const asignaturaId = await crearAsignatura(admin, planId, anioId, moduloId, {
     nombre: 'Matemática de prueba',
     orden: 1,
-    area: 'matematica',
-    areaNombre: 'Matemática',
     codigo: '1.3',
-    comparteEntreNiveles: false,
     activo: true,
   });
   const arbol = await leerArbolPlan(admin, planId);
-  const materia = arbol.niveles[0].modulos[0].materias[0];
-  assert.equal(materia.id, materiaId);
-  assert.equal(idCalificacionDeMateria(materia.id), materiaId);
-  assert.equal(materia.codigo, '1.3');
-  assert.equal(materia.comparteEntreNiveles, false);
+  const asignatura = arbol.anios[0].modulos[0].asignaturas[0];
+  assert.equal(asignatura.id, asignaturaId);
+  assert.equal(idAsignatura(asignatura.id), asignaturaId);
+  assert.equal(asignatura.codigo, '1.3');
+  assert.equal('area' in asignatura, false);
 
   const lectura = entorno.authenticatedContext('lectura1').firestore();
-  await assertSucceeds(getDoc(doc(lectura, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId, 'materias', materiaId)));
+  await assertSucceeds(getDoc(doc(lectura, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId, 'asignaturas', asignaturaId)));
 });
 
-test('sin los tres datos el plan no se crea, y docente o lectura no escriben', async () => {
+test('sin nombre, orientación, validez o resolución el plan no se crea, y docente o lectura no escriben', async () => {
   await sembrarUsuarios();
   const admin = entorno.authenticatedContext('admin1').firestore();
+  await assertFails(setDoc(doc(admin, 'planesEstudio', 'plan-1'), planDatos('admin1', { nombre: '' })));
   await assertFails(setDoc(doc(admin, 'planesEstudio', 'plan-1'), planDatos('admin1', { orientacion: '' })));
   await assertFails(setDoc(doc(admin, 'planesEstudio', 'plan-1'), planDatos('admin1', { resolucion: '   ' })));
   await assertFails(setDoc(doc(admin, 'planesEstudio', 'plan-1'), planDatos('admin1', { validezNacional: '' })));
@@ -160,97 +138,82 @@ test('sin los tres datos el plan no se crea, y docente o lectura no escriben', a
 
   const docente = entorno.authenticatedContext('docente1').firestore();
   await assertFails(setDoc(doc(docente, 'planesEstudio', 'plan-1'), planDatos('docente1')));
+  await assertFails(getDoc(doc(docente, 'planesEstudio', 'plan-1')));
   const lectura = entorno.authenticatedContext('lectura1').firestore();
   await assertFails(setDoc(doc(lectura, 'planesEstudio', 'plan-1'), planDatos('lectura1')));
   const pendiente = entorno.authenticatedContext('pendiente1').firestore();
   await assertFails(getDoc(doc(pendiente, 'planesEstudio', 'plan-1')));
-  await assertFails(crearPlanEstudio(docente, 'docente1', {
-    orientacion: 'Orientación de prueba',
-    resolucion: 'Resolución de prueba',
-    validezNacional: 'Validez de prueba',
-  }));
+  await assertFails(crearPlanEstudio(docente, 'docente1', alta));
 });
 
-test('la materia exige área y código vacío o n.m; en uso no se borra ni se apaga', async () => {
+test('la asignatura acepta un nombre libre y código vacío o n.m; en uso no se borra ni se apaga', async () => {
   await sembrarUsuarios();
   const admin = entorno.authenticatedContext('admin1').firestore();
   await setDoc(doc(admin, 'planesEstudio', 'plan-1'), planDatos('admin1'));
-  await setDoc(doc(admin, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a'), nivelDatos);
-  await setDoc(doc(admin, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a', 'modulos', 'mod-1'), moduloDatos);
-  const materia = doc(admin, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a', 'modulos', 'mod-1', 'materias', 'mat-1');
-  await assertFails(setDoc(materia, materiaDatos({ area: '', areaNombre: '' })));
-  await assertFails(setDoc(materia, materiaDatos({ codigo: 'modulo' })));
-  await assertSucceeds(setDoc(materia, materiaDatos({ codigo: '' })));
-  await assertSucceeds(updateDoc(materia, { codigo: '1.3' }));
-  await assertSucceeds(updateDoc(materia, { enUso: true }));
-  await assertFails(updateDoc(materia, { enUso: false }));
-  await assertFails(deleteDoc(materia));
+  await setDoc(doc(admin, 'planesEstudio', 'plan-1', 'anios', 'anio-a'), anioDatos);
+  await setDoc(doc(admin, 'planesEstudio', 'plan-1', 'anios', 'anio-a', 'modulos', 'mod-1'), moduloDatos);
+  const asignatura = doc(admin, 'planesEstudio', 'plan-1', 'anios', 'anio-a', 'modulos', 'mod-1', 'asignaturas', 'asig-1');
+  await assertFails(setDoc(asignatura, asignaturaDatos({ nombre: '' })));
+  await assertFails(setDoc(asignatura, asignaturaDatos({ codigo: 'modulo' })));
+  await assertSucceeds(setDoc(asignatura, asignaturaDatos({ nombre: 'Educación Física de prueba', codigo: '' })));
+  await assertSucceeds(updateDoc(asignatura, { codigo: '1.3', nombre: 'Matemática aplicada de prueba' }));
+  await assertSucceeds(updateDoc(asignatura, { enUso: true }));
+  await assertFails(updateDoc(asignatura, { enUso: false }));
+  await assertFails(deleteDoc(asignatura));
   await assertFails(updateDoc(doc(admin, 'planesEstudio', 'plan-1'), { orientacion: '' }));
+  await assertFails(updateDoc(doc(admin, 'planesEstudio', 'plan-1'), { nombre: '' }));
   await assertFails(updateDoc(doc(admin, 'planesEstudio', 'plan-1'), { creadoPor: 'otro' }));
 });
 
-test('el docente lee solo las materias de su área', async () => {
+test('el docente no lee el árbol y lectura sí lista las asignaturas', async () => {
   await sembrarUsuarios();
   await entorno.withSecurityRulesDisabled(async (contexto) => {
     const db = contexto.firestore();
     await setDoc(doc(db, 'planesEstudio', 'plan-1'), planDatos('admin1'));
-    await setDoc(doc(db, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a'), nivelDatos);
-    await setDoc(doc(db, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a', 'modulos', 'mod-1'), moduloDatos);
+    await setDoc(doc(db, 'planesEstudio', 'plan-1', 'anios', 'anio-a'), anioDatos);
+    await setDoc(doc(db, 'planesEstudio', 'plan-1', 'anios', 'anio-a', 'modulos', 'mod-1'), moduloDatos);
     await setDoc(
-      doc(db, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a', 'modulos', 'mod-1', 'materias', 'mat-mate'),
-      materiaDatos(),
-    );
-    await setDoc(
-      doc(db, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a', 'modulos', 'mod-1', 'materias', 'mat-lengua'),
-      materiaDatos({ nombre: 'Lengua de prueba', area: 'lengua', areaNombre: 'Lengua', codigo: '1.1', orden: 2 }),
+      doc(db, 'planesEstudio', 'plan-1', 'anios', 'anio-a', 'modulos', 'mod-1', 'asignaturas', 'asig-1'),
+      asignaturaDatos(),
     );
   });
 
-  const mate = entorno.authenticatedContext('docente1').firestore();
-  const base = collection(mate, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a', 'modulos', 'mod-1', 'materias');
-  await assertSucceeds(getDoc(doc(base, 'mat-mate')));
-  await assertFails(getDoc(doc(base, 'mat-lengua')));
-  await assertSucceeds(getDocs(query(base, where('area', '==', 'matematica'))));
+  const docente = entorno.authenticatedContext('docente1').firestore();
+  const base = collection(docente, 'planesEstudio', 'plan-1', 'anios', 'anio-a', 'modulos', 'mod-1', 'asignaturas');
+  await assertFails(getDoc(doc(docente, 'planesEstudio', 'plan-1')));
+  await assertFails(getDoc(doc(base, 'asig-1')));
   await assertFails(getDocs(base));
-  await assertFails(setDoc(doc(base, 'mat-nueva'), materiaDatos()));
-
-  const lengua = entorno.authenticatedContext('docente2').firestore();
-  await assertFails(getDoc(doc(lengua, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a', 'modulos', 'mod-1', 'materias', 'mat-mate')));
-  await assertSucceeds(getDoc(doc(lengua, 'planesEstudio', 'plan-1')));
 
   const lectura = entorno.authenticatedContext('lectura1').firestore();
-  await assertSucceeds(getDocs(collection(lectura, 'planesEstudio', 'plan-1', 'niveles', 'nivel-a', 'modulos', 'mod-1', 'materias')));
+  await assertSucceeds(getDocs(collection(lectura, 'planesEstudio', 'plan-1', 'anios', 'anio-a', 'modulos', 'mod-1', 'asignaturas')));
 });
 
-test('un área nueva se puede guardar y un módulo en uso no se borra', async () => {
+test('un módulo en uso no se borra ni se apaga', async () => {
   await sembrarUsuarios();
   const admin = entorno.authenticatedContext('admin1').firestore();
-  const planId = await crearPlanEstudio(admin, 'admin1', {
-    orientacion: 'Orientación de prueba',
-    resolucion: 'Resolución de prueba',
-    validezNacional: 'Validez de prueba',
-  });
-  const nivelId = await crearNivel(admin, planId, { codigo: 'B', anioCurso: 2, nombre: '2° año', orden: 1 });
-  const moduloId = await crearModulo(admin, planId, nivelId, { nombre: 'Módulo 8', orden: 8 });
-  await crearMateria(admin, planId, nivelId, moduloId, {
+  const planId = await crearPlanEstudio(admin, 'admin1', alta);
+  const anioId = await crearAnio(admin, planId, { nombre: 'Plan B', orden: 2 });
+  const moduloId = await crearModulo(admin, planId, anioId, { nombre: 'Módulo 8', orden: 8 });
+  await crearAsignatura(admin, planId, anioId, moduloId, {
     nombre: 'Taller de prueba',
     orden: 1,
-    area: 'educacion-fisica',
-    areaNombre: 'Educación Física',
     codigo: '',
-    comparteEntreNiveles: false,
     activo: true,
   });
-  await updateDoc(doc(admin, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId), { enUso: true });
-  await assertFails(updateDoc(doc(admin, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId), { enUso: false }));
-  await assertFails(deleteDoc(doc(admin, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId)));
+  await updateDoc(doc(admin, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId), { enUso: true });
+  await assertFails(updateDoc(doc(admin, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId), { enUso: false }));
+  await assertFails(deleteDoc(doc(admin, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId)));
 });
 
 test('el servicio rechaza un plan incompleto antes de escribir', async () => {
   await sembrarUsuarios();
   const admin = entorno.authenticatedContext('admin1').firestore();
   await assert.rejects(
-    () => crearPlanEstudio(admin, 'admin1', { orientacion: '', resolucion: 'R', validezNacional: 'V' }),
+    () => crearPlanEstudio(admin, 'admin1', { ...alta, orientacion: '' }),
+    PlanEstudioError,
+  );
+  await assert.rejects(
+    () => crearPlanEstudio(admin, 'admin1', { ...alta, nombre: '' }),
     PlanEstudioError,
   );
 });

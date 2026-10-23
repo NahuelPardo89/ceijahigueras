@@ -30,10 +30,10 @@ Teacher assignments live in `docentes/{uid}`, not on the user document. Keys loo
 |---|---|
 | `config/institucion` | Name, CUE, sede |
 | `ciclos/{anio}` | `abierto` or `cerrado` |
-| `planesEstudio/{planId}` | Admin-built plan: resolución, orientación, validez nacional. Starts empty |
-| `planesEstudio/{planId}/niveles/{nivelId}` | Level the admin names (A = 1°, B = 2°, C = 3°, or another code) |
-| `planesEstudio/.../modulos/{moduloId}` | Module inside a level |
-| `planesEstudio/.../materias/{materiaId}` | Subject. Opaque id, area, optional code `n.m`. This id is what a grade row should keep |
+| `planesEstudio/{planId}` | Admin-built plan: nombre (the title), orientación, validez nacional, resolución. Starts empty. No seed |
+| `planesEstudio/{planId}/anios/{anioId}` | A plan/año the admin names. Free nombre and orden. There is no separate nivel |
+| `planesEstudio/.../modulos/{moduloId}` | Module inside a plan/año |
+| `planesEstudio/.../asignaturas/{asignaturaId}` | Subject (also called área). Opaque id, optional code `n.m`. A later grade row should keep this id |
 | `planes/{planId}` | Older plan still read by RAC and the teacher sheet. The new screen does not seed it |
 | `planes/{planId}/espacios/{espacioId}` | Older space. Existing grade rows still use this id |
 | `estudiantes/{id}` | Name, masked DNI, plan, status. No full DNI or contact |
@@ -51,7 +51,7 @@ Teacher assignments live in `docentes/{uid}`, not on the user document. Keys loo
 
 Closing a RAC marks anything not approved as `adeuda` and makes grades read-only. "Generar RAC del ciclo siguiente" opens a RAC on the destination plan and carries failed spaces as `Prev`.
 
-Planes de Estudio starts empty. An admin types resolución, orientación and validez nacional, then levels, modules and subjects. `src/domain/planesSede.ts` is not a seed for that screen. It still feeds the older `planes` collection used by the RAC, the teacher sheet and the local emulator seed, so existing grade rows keep their id.
+Planes de Estudio starts empty. An admin types nombre, orientación, validez nacional and resolución. The title is the nombre; orientación is its own field. Then they add planes o años, modules and asignaturas by hand. There is no seed and no suggested área list. `src/domain/planesSede.ts` is not a seed for that screen. It still feeds only the older `planes` collection used by the RAC, the teacher sheet and the local emulator seed. Docentes do not read the new tree until the planilla stage.
 
 ## Legacy collections
 `students`, `grades`, `equivalences`, `subjects` and `studyPlans` are admin **read-only**. Nobody can create, update or delete them from the client. The app no longer ships the old screens or hooks (`StudentManagement`, `GradesManagement`, `SubjectManagement`, `StudyPlanManagement`, `BulkImportModal`, `useStudents`, `useGrades`, `useSubjects`, `useStudyPlans`, `useEquivalences`). `students` still holds DNI and contact, so teachers and lectura cannot read them.

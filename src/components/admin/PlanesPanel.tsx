@@ -11,31 +11,26 @@ import { Label } from '@/components/ui/label';
 import { SelectorTema, type Tema } from '@/components/tema/SelectorTema';
 import { cn } from '@/lib/utils';
 import {
-  AREAS_SUGERIDAS,
-  areasDelArbol,
-  prepararMateria,
-  resolverArea,
+  type AnioEstudio,
   type ArbolPlan,
-  type AreaCatalogo,
-  type DatosMateria,
+  type AsignaturaEstudio,
+  type DatosAnio,
+  type DatosAsignatura,
   type DatosModulo,
-  type DatosNivel,
-  type MateriaEstudio,
   type ModuloEstudio,
-  type NivelEstudio,
 } from '../../domain/planesEstudio';
 import {
-  actualizarMateria,
+  actualizarAnio,
+  actualizarAsignatura,
   actualizarModulo,
-  actualizarNivel,
   actualizarPlanEstudio,
-  crearMateria,
+  crearAnio,
+  crearAsignatura,
   crearModulo,
-  crearNivel,
   crearPlanEstudio,
-  eliminarMateria,
+  eliminarAnio,
+  eliminarAsignatura,
   eliminarModulo,
-  eliminarNivel,
   eliminarPlanEstudio,
   leerArbolPlan,
   listarPlanesEstudio,
@@ -65,6 +60,11 @@ function useTema(): [Tema, (tema: Tema) => void] {
     return () => { document.documentElement.classList.remove('dark'); };
   }, [tema]);
   return [tema, setTema];
+}
+
+function textoCantidad(cantidad: number): string {
+  if (cantidad === 0) return 'Sin planes o años';
+  return `${cantidad} ${cantidad === 1 ? 'plan o año' : 'planes o años'}`;
 }
 
 export const PlanesPanel = () => {
@@ -122,7 +122,7 @@ export const PlanesPanel = () => {
             selector={selector}
             onCancelar={() => setVista('lista')}
             onCreado={async (id) => {
-              toast('Plan guardado. Ahora podés cargar los niveles.');
+              toast('Plan guardado. Ahora podés cargar los planes o años.');
               await cargar();
               abrir(id);
             }}
@@ -209,12 +209,11 @@ function Lista({
             <li key={plan.id}>
               <article className="flex flex-col gap-4 rounded-2xl border border-border bg-card px-5 py-5 sm:flex-row sm:items-center sm:justify-between">
                 <div className="space-y-1">
-                  <h2 className="text-lg font-medium tracking-tight">{plan.orientacion}</h2>
+                  <h2 className="text-lg font-medium tracking-tight">{plan.nombre}</h2>
+                  <p className="text-sm text-muted-foreground">Orientación {plan.orientacion}</p>
                   <p className="text-sm text-muted-foreground">Resolución {plan.resolucion}</p>
                   <p className="text-sm text-muted-foreground">Validez nacional {plan.validezNacional}</p>
-                  <p className="text-sm text-muted-foreground">
-                    {plan.cantidadNiveles === 0 ? 'Sin niveles' : `${plan.cantidadNiveles} ${plan.cantidadNiveles === 1 ? 'nivel' : 'niveles'}`}
-                  </p>
+                  <p className="text-sm text-muted-foreground">{textoCantidad(plan.cantidadAnios)}</p>
                   <div className="flex flex-wrap gap-2 pt-2">
                     <Badge variant={plan.activo ? 'secondary' : 'outline'}>
                       {plan.activo ? 'Se ofrece en altas nuevas' : 'No se ofrece en altas nuevas'}
@@ -237,12 +236,14 @@ function AltaPlan({ uid, selector, onCancelar, onCreado }: {
   onCancelar: () => void;
   onCreado: (id: string) => Promise<void>;
 }) {
-  const idResolucion = useId();
+  const idNombre = useId();
   const idOrientacion = useId();
   const idValidez = useId();
-  const [resolucion, setResolucion] = useState('');
+  const idResolucion = useId();
+  const [nombre, setNombre] = useState('');
   const [orientacion, setOrientacion] = useState('');
   const [validez, setValidez] = useState('');
+  const [resolucion, setResolucion] = useState('');
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
@@ -251,7 +252,7 @@ function AltaPlan({ uid, selector, onCancelar, onCreado }: {
     setError(null);
     setOcupado(true);
     try {
-      const id = await crearPlanEstudio(db, uid, { resolucion, orientacion, validezNacional: validez });
+      const id = await crearPlanEstudio(db, uid, { nombre, orientacion, validezNacional: validez, resolucion });
       await onCreado(id);
     } catch (err) {
       setError(mensajeError(err));
@@ -263,19 +264,22 @@ function AltaPlan({ uid, selector, onCancelar, onCreado }: {
     <form onSubmit={(event) => void enviar(event)} noValidate className="space-y-8">
       <Encabezado
         titulo="Nuevo plan de estudio"
-        bajada="Con estos tres datos alcanza. Los niveles, los módulos y las materias se cargan después, y el plan queda sin niveles."
+        bajada="Con estos cuatro datos alcanza. Los planes o años, los módulos y las asignaturas se cargan después, y el plan queda vacío."
         selector={selector}
       />
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <div className="grid gap-5">
-        <Campo id={idResolucion} etiqueta="Resolución">
-          <Input id={idResolucion} value={resolucion} onChange={(event) => setResolucion(event.target.value)} autoComplete="off" required aria-required="true" />
+        <Campo id={idNombre} etiqueta="Nombre">
+          <Input id={idNombre} value={nombre} onChange={(event) => setNombre(event.target.value)} autoComplete="off" required aria-required="true" />
         </Campo>
         <Campo id={idOrientacion} etiqueta="Orientación">
           <Input id={idOrientacion} value={orientacion} onChange={(event) => setOrientacion(event.target.value)} autoComplete="off" required aria-required="true" />
         </Campo>
         <Campo id={idValidez} etiqueta="Validez nacional">
           <Input id={idValidez} value={validez} onChange={(event) => setValidez(event.target.value)} autoComplete="off" required aria-required="true" />
+        </Campo>
+        <Campo id={idResolucion} etiqueta="Resolución">
+          <Input id={idResolucion} value={resolucion} onChange={(event) => setResolucion(event.target.value)} autoComplete="off" required aria-required="true" />
         </Campo>
       </div>
       <div className="flex flex-wrap gap-3">
@@ -300,7 +304,7 @@ function EditorPlan({
   const [arbol, setArbol] = useState<ArbolPlan | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [confirmar, setConfirmar] = useState(false);
-  const [mostrarNivel, setMostrarNivel] = useState(false);
+  const [mostrarAnio, setMostrarAnio] = useState(false);
 
   const recargar = async () => {
     setArbol(await leerArbolPlan(db, planId));
@@ -328,21 +332,20 @@ function EditorPlan({
   if (!arbol && !error) return <p className="text-sm text-muted-foreground" role="status">Cargando el plan…</p>;
   if (!arbol) return <p className="text-sm text-destructive" role="alert">{error}</p>;
 
-  const opciones = areasDelArbol(arbol.niveles);
-
   return (
     <div className="space-y-12">
       <Encabezado
-        titulo={arbol.plan.orientacion}
-        bajada={`Resolución ${arbol.plan.resolucion} · Validez nacional ${arbol.plan.validezNacional}`}
+        titulo={arbol.plan.nombre}
+        bajada={`Orientación ${arbol.plan.orientacion} · Resolución ${arbol.plan.resolucion} · Validez nacional ${arbol.plan.validezNacional}`}
         selector={selector}
         accion={<Button type="button" variant="outline" onClick={onVolver}>Volver al listado</Button>}
       />
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
 
       <section className="space-y-4" aria-labelledby="datos-plan">
-        <h2 id="datos-plan" className="text-lg font-medium tracking-tight">Datos del plan</h2>
+        <h2 id="datos-plan" className="text-lg font-medium tracking-tight">Datos del plan de estudio</h2>
         <FormPlan
+          nombre={arbol.plan.nombre}
           orientacion={arbol.plan.orientacion}
           resolucion={arbol.plan.resolucion}
           validez={arbol.plan.validezNacional}
@@ -353,42 +356,42 @@ function EditorPlan({
         />
       </section>
 
-      <section className="space-y-4" aria-labelledby="niveles-plan">
+      <section className="space-y-4" aria-labelledby="anios-plan">
         <div className="space-y-2">
-          <h2 id="niveles-plan" className="text-lg font-medium tracking-tight">Niveles</h2>
+          <h2 id="anios-plan" className="text-lg font-medium tracking-tight">Planes o años</h2>
           <p className="max-w-xl text-sm leading-relaxed text-muted-foreground">
-            En esta modalidad, A es 1° año, B es 2° y C es 3°. Cargalos vos: la app no los inserta sola.
+            Cada uno lleva el nombre que le pongas. La app no inserta ninguno sola.
           </p>
         </div>
-        {arbol.niveles.length === 0 && (
-          <p className="text-sm text-muted-foreground">Este plan todavía no tiene niveles.</p>
+        {arbol.anios.length === 0 && (
+          <p className="text-sm text-muted-foreground">Este plan todavía no tiene planes o años.</p>
         )}
         <div className="flex flex-col gap-4">
-          {arbol.niveles.map((nivel) => (
-            <NivelCard key={nivel.id} planId={planId} nivel={nivel} opciones={opciones} correr={correr} />
+          {arbol.anios.map((anio) => (
+            <AnioCard key={anio.id} planId={planId} anio={anio} correr={correr} />
           ))}
         </div>
-        {mostrarNivel ? (
-          <FormNivel
-            ordenInicial={arbol.niveles.length + 1}
-            onCancelar={() => setMostrarNivel(false)}
+        {mostrarAnio ? (
+          <FormAnio
+            ordenInicial={arbol.anios.length + 1}
+            onCancelar={() => setMostrarAnio(false)}
             onGuardar={async (datos) => {
-              await correr(() => crearNivel(db, planId, datos).then(() => undefined));
-              setMostrarNivel(false);
+              await correr(() => crearAnio(db, planId, datos).then(() => undefined));
+              setMostrarAnio(false);
             }}
           />
         ) : (
-          <Button type="button" onClick={() => setMostrarNivel(true)}>Agregar nivel</Button>
+          <Button type="button" onClick={() => setMostrarAnio(true)}>Agregar plan o año</Button>
         )}
       </section>
 
-      {arbol.niveles.length === 0 && !arbol.plan.enUso && (
+      {arbol.anios.length === 0 && !arbol.plan.enUso && (
         <>
           <Button type="button" variant="outline" onClick={() => setConfirmar(true)}>Eliminar plan</Button>
           <Confirmacion
             abierto={confirmar}
-            titulo="¿Eliminar este plan?"
-            texto="Todavía no tiene niveles. No se puede deshacer."
+            titulo="¿Eliminar este plan de estudio?"
+            texto="Todavía no tiene planes o años. No se puede deshacer."
             onCancelar={() => setConfirmar(false)}
             onConfirmar={async () => {
               await eliminarPlanEstudio(db, planId);
@@ -401,65 +404,63 @@ function EditorPlan({
   );
 }
 
-function NivelCard({
+function AnioCard({
   planId,
-  nivel,
-  opciones,
+  anio,
   correr,
 }: {
   planId: string;
-  nivel: ArbolPlan['niveles'][number];
-  opciones: AreaCatalogo[];
+  anio: ArbolPlan['anios'][number];
   correr: (accion: () => Promise<void>) => Promise<void>;
 }) {
   const [editando, setEditando] = useState(false);
   const [mostrarModulo, setMostrarModulo] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
-  const hijos = [...nivel.modulos, ...nivel.modulos.flatMap((modulo) => modulo.materias)];
-  const bloqueado = nivel.enUso || hijos.some((item) => item.enUso);
+  const hijos = [...anio.modulos, ...anio.modulos.flatMap((modulo) => modulo.asignaturas)];
+  const bloqueado = anio.enUso || hijos.some((item) => item.enUso);
 
   return (
     <article className="space-y-4 rounded-2xl border border-border bg-card p-5">
       <header className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div>
-          <h3 className="text-base font-medium">{nivel.codigo} · {nivel.nombre}</h3>
-          <p className="text-sm text-muted-foreground">{nivel.anioCurso}° año de cursada · orden {nivel.orden}</p>
+          <h3 className="text-base font-medium">{anio.nombre}</h3>
+          <p className="text-sm text-muted-foreground">Orden {anio.orden}</p>
         </div>
         <div className="flex flex-wrap gap-2">
           <Button type="button" variant="outline" size="sm" onClick={() => setEditando((valor) => !valor)}>{editando ? 'Cerrar' : 'Editar'}</Button>
           {!bloqueado && <Button type="button" variant="ghost" size="sm" onClick={() => setConfirmar(true)}>Eliminar</Button>}
         </div>
       </header>
-      {bloqueado && <p className="text-sm text-muted-foreground">Hay materias con notas. Este nivel no se puede borrar.</p>}
+      {bloqueado && <p className="text-sm text-muted-foreground">Hay asignaturas con notas. Este plan o año no se puede borrar.</p>}
       {editando && (
-        <FormNivel
-          inicial={nivel}
+        <FormAnio
+          inicial={anio}
           onCancelar={() => setEditando(false)}
           onGuardar={async (datos) => {
-            await correr(() => actualizarNivel(db, planId, nivel.id, datos));
+            await correr(() => actualizarAnio(db, planId, anio.id, datos));
             setEditando(false);
           }}
         />
       )}
       <Confirmacion
         abierto={confirmar}
-        titulo={`¿Eliminar el nivel ${nivel.codigo}?`}
-        texto="Se borran también sus módulos y materias. No se puede deshacer."
+        titulo={`¿Eliminar ${anio.nombre}?`}
+        texto="Se borran también sus módulos y asignaturas. No se puede deshacer."
         onCancelar={() => setConfirmar(false)}
         onConfirmar={async () => {
-          await correr(() => eliminarNivel(db, planId, nivel.id));
+          await correr(() => eliminarAnio(db, planId, anio.id));
           setConfirmar(false);
         }}
       />
-      {nivel.modulos.map((modulo) => (
-        <ModuloCard key={modulo.id} planId={planId} nivelId={nivel.id} modulo={modulo} opciones={opciones} correr={correr} />
+      {anio.modulos.map((modulo) => (
+        <ModuloCard key={modulo.id} planId={planId} anioId={anio.id} modulo={modulo} correr={correr} />
       ))}
       {mostrarModulo ? (
         <FormModulo
-          ordenInicial={nivel.modulos.length + 1}
+          ordenInicial={anio.modulos.length + 1}
           onCancelar={() => setMostrarModulo(false)}
           onGuardar={async (datos) => {
-            await correr(() => crearModulo(db, planId, nivel.id, datos).then(() => undefined));
+            await correr(() => crearModulo(db, planId, anio.id, datos).then(() => undefined));
             setMostrarModulo(false);
           }}
         />
@@ -472,21 +473,19 @@ function NivelCard({
 
 function ModuloCard({
   planId,
-  nivelId,
+  anioId,
   modulo,
-  opciones,
   correr,
 }: {
   planId: string;
-  nivelId: string;
-  modulo: ArbolPlan['niveles'][number]['modulos'][number];
-  opciones: AreaCatalogo[];
+  anioId: string;
+  modulo: ArbolPlan['anios'][number]['modulos'][number];
   correr: (accion: () => Promise<void>) => Promise<void>;
 }) {
   const [editando, setEditando] = useState(false);
-  const [mostrarMateria, setMostrarMateria] = useState(false);
+  const [mostrarAsignatura, setMostrarAsignatura] = useState(false);
   const [confirmar, setConfirmar] = useState(false);
-  const bloqueado = modulo.enUso || modulo.materias.some((materia) => materia.enUso);
+  const bloqueado = modulo.enUso || modulo.asignaturas.some((asignatura) => asignatura.enUso);
 
   return (
     <article className="space-y-3 rounded-2xl border border-border bg-background p-4">
@@ -502,7 +501,7 @@ function ModuloCard({
           inicial={modulo}
           onCancelar={() => setEditando(false)}
           onGuardar={async (datos) => {
-            await correr(() => actualizarModulo(db, planId, nivelId, modulo.id, datos));
+            await correr(() => actualizarModulo(db, planId, anioId, modulo.id, datos));
             setEditando(false);
           }}
         />
@@ -510,57 +509,53 @@ function ModuloCard({
       <Confirmacion
         abierto={confirmar}
         titulo={`¿Eliminar ${modulo.nombre}?`}
-        texto="Se borran también sus materias. No se puede deshacer."
+        texto="Se borran también sus asignaturas. No se puede deshacer."
         onCancelar={() => setConfirmar(false)}
         onConfirmar={async () => {
-          await correr(() => eliminarModulo(db, planId, nivelId, modulo.id));
+          await correr(() => eliminarModulo(db, planId, anioId, modulo.id));
           setConfirmar(false);
         }}
       />
-      {modulo.materias.length === 0 && <p className="text-sm text-muted-foreground">Este módulo todavía no tiene materias.</p>}
+      {modulo.asignaturas.length === 0 && <p className="text-sm text-muted-foreground">Este módulo todavía no tiene asignaturas.</p>}
       <ul className="flex flex-col gap-2">
-        {modulo.materias.map((materia) => (
-          <MateriaCard
-            key={materia.id}
+        {modulo.asignaturas.map((asignatura) => (
+          <AsignaturaCard
+            key={asignatura.id}
             planId={planId}
-            nivelId={nivelId}
+            anioId={anioId}
             moduloId={modulo.id}
-            materia={materia}
-            opciones={opciones}
+            asignatura={asignatura}
             correr={correr}
           />
         ))}
       </ul>
-      {mostrarMateria ? (
-        <FormMateria
-          opciones={opciones}
-          ordenInicial={modulo.materias.length + 1}
-          onCancelar={() => setMostrarMateria(false)}
+      {mostrarAsignatura ? (
+        <FormAsignatura
+          ordenInicial={modulo.asignaturas.length + 1}
+          onCancelar={() => setMostrarAsignatura(false)}
           onGuardar={async (datos) => {
-            await correr(() => crearMateria(db, planId, nivelId, modulo.id, datos).then(() => undefined));
-            setMostrarMateria(false);
+            await correr(() => crearAsignatura(db, planId, anioId, modulo.id, datos).then(() => undefined));
+            setMostrarAsignatura(false);
           }}
         />
       ) : (
-        <Button type="button" size="sm" onClick={() => setMostrarMateria(true)}>Agregar materia</Button>
+        <Button type="button" size="sm" onClick={() => setMostrarAsignatura(true)}>Agregar asignatura</Button>
       )}
     </article>
   );
 }
 
-function MateriaCard({
+function AsignaturaCard({
   planId,
-  nivelId,
+  anioId,
   moduloId,
-  materia,
-  opciones,
+  asignatura,
   correr,
 }: {
   planId: string;
-  nivelId: string;
+  anioId: string;
   moduloId: string;
-  materia: MateriaEstudio;
-  opciones: AreaCatalogo[];
+  asignatura: AsignaturaEstudio;
   correr: (accion: () => Promise<void>) => Promise<void>;
 }) {
   const [editando, setEditando] = useState(false);
@@ -570,36 +565,34 @@ function MateriaCard({
       <div className="flex flex-col gap-3 sm:flex-row sm:items-start sm:justify-between">
         <div className="space-y-1">
           <p className="text-sm font-medium">
-            {materia.codigo ? <span className="mr-2 tabular-nums text-muted-foreground">{materia.codigo}</span> : null}
-            {materia.nombre}
+            {asignatura.codigo ? <span className="mr-2 tabular-nums text-muted-foreground">{asignatura.codigo}</span> : null}
+            {asignatura.nombre}
           </p>
-          <p className="text-sm text-muted-foreground">Área {materia.areaNombre} · orden {materia.orden}</p>
+          <p className="text-sm text-muted-foreground">Orden {asignatura.orden}</p>
           <div className="flex flex-wrap gap-2 pt-1">
-            {materia.comparteEntreNiveles && <Badge>Se comparte entre niveles</Badge>}
-            <Badge variant={materia.activo ? 'secondary' : 'outline'}>
-              {materia.activo ? 'Entra en RAC nuevos' : 'No entra en RAC nuevos'}
+            <Badge variant={asignatura.activo ? 'secondary' : 'outline'}>
+              {asignatura.activo ? 'Entra en RAC nuevos' : 'No entra en RAC nuevos'}
             </Badge>
-            {materia.enUso && <Badge>En uso</Badge>}
+            {asignatura.enUso && <Badge>En uso</Badge>}
           </div>
         </div>
         <Button type="button" variant="outline" size="sm" onClick={() => setEditando((valor) => !valor)}>{editando ? 'Cerrar' : 'Editar'}</Button>
       </div>
       {editando && (
-        <FormMateria
-          opciones={opciones}
-          inicial={materia}
+        <FormAsignatura
+          inicial={asignatura}
           onCancelar={() => setEditando(false)}
           onGuardar={async (datos) => {
-            await correr(() => actualizarMateria(db, planId, nivelId, moduloId, materia.id, datos));
+            await correr(() => actualizarAsignatura(db, planId, anioId, moduloId, asignatura.id, datos));
             setEditando(false);
           }}
-          onEliminar={materia.enUso ? undefined : async () => {
-            await correr(() => eliminarMateria(db, planId, nivelId, moduloId, materia.id));
+          onEliminar={asignatura.enUso ? undefined : async () => {
+            await correr(() => eliminarAsignatura(db, planId, anioId, moduloId, asignatura.id));
             setEditando(false);
           }}
         />
       )}
-      {materia.enUso && editando && (
+      {asignatura.enUso && editando && (
         <p className="mt-3 text-sm text-muted-foreground">
           Ya tiene notas. No se puede borrar. Si no tiene que entrar en los RAC nuevos, destildá «Entra en los RAC nuevos».
         </p>
@@ -678,27 +671,29 @@ function Casilla({ id, checked, onChange, children }: {
 }
 
 function FormPlan({
+  nombre,
   orientacion,
   resolucion,
   validez,
   activo,
   onGuardar,
 }: {
+  nombre: string;
   orientacion: string;
   resolucion: string;
   validez: string;
   activo: boolean;
-  onGuardar: (datos: { orientacion: string; resolucion: string; validezNacional: string; activo: boolean }) => Promise<void>;
+  onGuardar: (datos: { nombre: string; orientacion: string; resolucion: string; validezNacional: string; activo: boolean }) => Promise<void>;
 }) {
   const base = useId();
-  const [valores, setValores] = useState({ orientacion, resolucion, validez, activo });
+  const [valores, setValores] = useState({ nombre, orientacion, resolucion, validez, activo });
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
 
   useEffect(() => {
     // eslint-disable-next-line react-hooks/set-state-in-effect
-    setValores({ orientacion, resolucion, validez, activo });
-  }, [orientacion, resolucion, validez, activo]);
+    setValores({ nombre, orientacion, resolucion, validez, activo });
+  }, [nombre, orientacion, resolucion, validez, activo]);
 
   const enviar = async (event: FormEvent) => {
     event.preventDefault();
@@ -706,6 +701,7 @@ function FormPlan({
     setError(null);
     try {
       await onGuardar({
+        nombre: valores.nombre,
         orientacion: valores.orientacion,
         resolucion: valores.resolucion,
         validezNacional: valores.validez,
@@ -722,14 +718,17 @@ function FormPlan({
     <form className="space-y-5 rounded-2xl border border-border p-5" onSubmit={(event) => void enviar(event)} noValidate>
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo id={`${base}-res`} etiqueta="Resolución">
-          <Input id={`${base}-res`} value={valores.resolucion} onChange={(event) => setValores({ ...valores, resolucion: event.target.value })} autoComplete="off" />
+        <Campo id={`${base}-nombre`} etiqueta="Nombre" className="sm:col-span-2">
+          <Input id={`${base}-nombre`} value={valores.nombre} onChange={(event) => setValores({ ...valores, nombre: event.target.value })} autoComplete="off" required aria-required="true" />
         </Campo>
         <Campo id={`${base}-ori`} etiqueta="Orientación">
-          <Input id={`${base}-ori`} value={valores.orientacion} onChange={(event) => setValores({ ...valores, orientacion: event.target.value })} autoComplete="off" />
+          <Input id={`${base}-ori`} value={valores.orientacion} onChange={(event) => setValores({ ...valores, orientacion: event.target.value })} autoComplete="off" required aria-required="true" />
+        </Campo>
+        <Campo id={`${base}-res`} etiqueta="Resolución">
+          <Input id={`${base}-res`} value={valores.resolucion} onChange={(event) => setValores({ ...valores, resolucion: event.target.value })} autoComplete="off" required aria-required="true" />
         </Campo>
         <Campo id={`${base}-val`} etiqueta="Validez nacional" className="sm:col-span-2">
-          <Input id={`${base}-val`} value={valores.validez} onChange={(event) => setValores({ ...valores, validez: event.target.value })} autoComplete="off" />
+          <Input id={`${base}-val`} value={valores.validez} onChange={(event) => setValores({ ...valores, validez: event.target.value })} autoComplete="off" required aria-required="true" />
         </Campo>
       </div>
       <Casilla id={`${base}-activo`} checked={valores.activo} onChange={(activoAhora) => setValores({ ...valores, activo: activoAhora })}>
@@ -740,20 +739,18 @@ function FormPlan({
   );
 }
 
-function FormNivel({
+function FormAnio({
   inicial,
   ordenInicial = 1,
   onGuardar,
   onCancelar,
 }: {
-  inicial?: NivelEstudio;
+  inicial?: AnioEstudio;
   ordenInicial?: number;
-  onGuardar: (datos: DatosNivel) => Promise<void>;
+  onGuardar: (datos: DatosAnio) => Promise<void>;
   onCancelar: () => void;
 }) {
   const base = useId();
-  const [codigo, setCodigo] = useState(inicial?.codigo ?? '');
-  const [anio, setAnio] = useState(String(inicial?.anioCurso ?? ''));
   const [nombre, setNombre] = useState(inicial?.nombre ?? '');
   const [orden, setOrden] = useState(String(inicial?.orden ?? ordenInicial));
   const [error, setError] = useState<string | null>(null);
@@ -761,16 +758,15 @@ function FormNivel({
 
   const enviar = async (event: FormEvent) => {
     event.preventDefault();
-    const anioCurso = Number(anio);
     const ordenNumero = Number(orden);
-    if (!Number.isInteger(anioCurso) || !Number.isInteger(ordenNumero)) {
-      setError('El año y el orden tienen que ser números enteros.');
+    if (!Number.isInteger(ordenNumero)) {
+      setError('El orden tiene que ser un número entero.');
       return;
     }
     setOcupado(true);
     setError(null);
     try {
-      await onGuardar({ codigo, anioCurso, nombre, orden: ordenNumero });
+      await onGuardar({ nombre, orden: ordenNumero });
     } catch (err) {
       setError(mensajeError(err));
       setOcupado(false);
@@ -779,24 +775,18 @@ function FormNivel({
 
   return (
     <form className="space-y-4 rounded-2xl border border-border bg-background p-5" onSubmit={(event) => void enviar(event)} noValidate>
-      <h3 className="text-sm font-medium">{inicial ? 'Editar nivel' : 'Nuevo nivel'}</h3>
+      <h3 className="text-sm font-medium">{inicial ? 'Editar plan o año' : 'Nuevo plan o año'}</h3>
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo id={`${base}-codigo`} etiqueta="Código">
-          <Input id={`${base}-codigo`} value={codigo} placeholder="A" onChange={(event) => setCodigo(event.target.value)} autoComplete="off" />
-        </Campo>
-        <Campo id={`${base}-anio`} etiqueta="Año de cursada">
-          <Input id={`${base}-anio`} inputMode="numeric" value={anio} placeholder="1" onChange={(event) => setAnio(event.target.value)} autoComplete="off" />
-        </Campo>
         <Campo id={`${base}-nombre`} etiqueta="Nombre">
-          <Input id={`${base}-nombre`} value={nombre} placeholder="1° año" onChange={(event) => setNombre(event.target.value)} autoComplete="off" />
+          <Input id={`${base}-nombre`} value={nombre} onChange={(event) => setNombre(event.target.value)} autoComplete="off" />
         </Campo>
         <Campo id={`${base}-orden`} etiqueta="Orden">
           <Input id={`${base}-orden`} inputMode="numeric" value={orden} onChange={(event) => setOrden(event.target.value)} autoComplete="off" />
         </Campo>
       </div>
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={ocupado}>{ocupado ? 'Guardando…' : inicial ? 'Guardar nivel' : 'Agregar nivel'}</Button>
+        <Button type="submit" disabled={ocupado}>{ocupado ? 'Guardando…' : inicial ? 'Guardar plan o año' : 'Agregar plan o año'}</Button>
         <Button type="button" variant="outline" onClick={onCancelar}>Cancelar</Button>
       </div>
     </form>
@@ -857,30 +847,23 @@ function FormModulo({
   );
 }
 
-function FormMateria({
-  opciones,
+function FormAsignatura({
   inicial,
   ordenInicial = 1,
   onGuardar,
   onCancelar,
   onEliminar,
 }: {
-  opciones: AreaCatalogo[];
-  inicial?: MateriaEstudio;
+  inicial?: AsignaturaEstudio;
   ordenInicial?: number;
-  onGuardar: (datos: DatosMateria) => Promise<void>;
+  onGuardar: (datos: DatosAsignatura) => Promise<void>;
   onCancelar: () => void;
   onEliminar?: () => Promise<void>;
 }) {
   const base = useId();
-  const catalogo = opciones.length > 0 ? opciones : [...AREAS_SUGERIDAS];
-  const inicialOtra = inicial ? !catalogo.some((area) => area.clave === inicial.area) : false;
   const [nombre, setNombre] = useState(inicial?.nombre ?? '');
   const [orden, setOrden] = useState(String(inicial?.orden ?? ordenInicial));
-  const [area, setArea] = useState(inicial ? (inicialOtra ? '__otra' : inicial.area) : catalogo[0].clave);
-  const [areaLibre, setAreaLibre] = useState(inicialOtra ? inicial?.areaNombre ?? '' : '');
   const [codigo, setCodigo] = useState(inicial?.codigo ?? '');
-  const [comparte, setComparte] = useState(inicial?.comparteEntreNiveles ?? false);
   const [activo, setActivo] = useState(inicial?.activo ?? true);
   const [error, setError] = useState<string | null>(null);
   const [ocupado, setOcupado] = useState(false);
@@ -893,28 +876,10 @@ function FormMateria({
       setError('El orden tiene que ser un número entero.');
       return;
     }
-    const resuelta = resolverArea(area, areaLibre, catalogo);
-    if (!resuelta) {
-      setError('Elegí un área, o escribí el nombre de una nueva.');
-      return;
-    }
-    const preparado = prepararMateria({
-      nombre,
-      orden: ordenNumero,
-      area: resuelta.area,
-      areaNombre: resuelta.areaNombre,
-      codigo,
-      comparteEntreNiveles: comparte,
-      activo,
-    });
-    if (!preparado.ok) {
-      setError(preparado.error);
-      return;
-    }
     setOcupado(true);
     setError(null);
     try {
-      await onGuardar(preparado.datos);
+      await onGuardar({ nombre, orden: ordenNumero, codigo, activo });
     } catch (err) {
       setError(mensajeError(err));
       setOcupado(false);
@@ -923,28 +888,12 @@ function FormMateria({
 
   return (
     <form className="mt-3 space-y-4 rounded-2xl border border-border bg-background p-5" onSubmit={(event) => void enviar(event)} noValidate>
-      <h3 className="text-sm font-medium">{inicial ? 'Editar materia' : 'Nueva materia'}</h3>
+      <h3 className="text-sm font-medium">{inicial ? 'Editar asignatura' : 'Nueva asignatura'}</h3>
       {error && <p className="text-sm text-destructive" role="alert">{error}</p>}
       <div className="grid gap-4 sm:grid-cols-2">
-        <Campo id={`${base}-nombre`} etiqueta="Nombre">
+        <Campo id={`${base}-nombre`} etiqueta="Nombre" className="sm:col-span-2">
           <Input id={`${base}-nombre`} value={nombre} onChange={(event) => setNombre(event.target.value)} autoComplete="off" />
         </Campo>
-        <Campo id={`${base}-area`} etiqueta="Área">
-          <select
-            id={`${base}-area`}
-            className="flex h-11 w-full rounded-xl border border-input bg-background px-3 text-sm text-foreground outline-none focus-visible:ring-2 focus-visible:ring-ring"
-            value={area}
-            onChange={(event) => setArea(event.target.value)}
-          >
-            {catalogo.map((item) => <option key={item.clave} value={item.clave}>{item.nombre}</option>)}
-            <option value="__otra">Otra área…</option>
-          </select>
-        </Campo>
-        {area === '__otra' && (
-          <Campo id={`${base}-area-libre`} etiqueta="Nombre de la nueva área" className="sm:col-span-2">
-            <Input id={`${base}-area-libre`} value={areaLibre} onChange={(event) => setAreaLibre(event.target.value)} autoComplete="off" />
-          </Campo>
-        )}
         <Campo id={`${base}-orden`} etiqueta="Orden">
           <Input id={`${base}-orden`} inputMode="numeric" value={orden} onChange={(event) => setOrden(event.target.value)} autoComplete="off" />
         </Campo>
@@ -955,21 +904,18 @@ function FormMateria({
       <p id={`${base}-codigo-ayuda`} className="text-sm leading-relaxed text-muted-foreground">
         Si lo cargás, usá el código de la planilla para poder cruzarlo después. Por ejemplo, 1.3. Si no hace falta, dejalo vacío.
       </p>
-      <Casilla id={`${base}-comparte`} checked={comparte} onChange={setComparte}>
-        Se comparte entre niveles. Arranca destildado: la nota se copia a otro nivel solo si lo marcás y el código coincide.
-      </Casilla>
       <Casilla id={`${base}-activo`} checked={activo} onChange={setActivo}>
         Entra en los RAC nuevos.
       </Casilla>
       <div className="flex flex-wrap gap-2">
-        <Button type="submit" disabled={ocupado}>{ocupado ? 'Guardando…' : inicial ? 'Guardar materia' : 'Agregar materia'}</Button>
+        <Button type="submit" disabled={ocupado}>{ocupado ? 'Guardando…' : inicial ? 'Guardar asignatura' : 'Agregar asignatura'}</Button>
         <Button type="button" variant="outline" onClick={onCancelar}>Cancelar</Button>
         {onEliminar && <Button type="button" variant="ghost" onClick={() => setConfirmar(true)}>Eliminar</Button>}
       </div>
       {onEliminar && (
         <Confirmacion
           abierto={confirmar}
-          titulo={`¿Eliminar ${nombre || 'esta materia'}?`}
+          titulo={`¿Eliminar ${nombre || 'esta asignatura'}?`}
           texto="Todavía no tiene notas. No se puede deshacer."
           onCancelar={() => setConfirmar(false)}
           onConfirmar={onEliminar}

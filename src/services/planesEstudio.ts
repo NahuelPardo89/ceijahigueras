@@ -12,20 +12,20 @@ import {
 import {
   puedeEliminarContenedor,
   puedeEliminarPorUso,
-  prepararMateria,
+  prepararAnio,
+  prepararAsignatura,
   prepararModulo,
-  prepararNivel,
   prepararPlanEstudio,
+  type AnioConModulos,
+  type AnioEstudio,
   type ArbolPlan,
-  type DatosMateria,
+  type AsignaturaEstudio,
+  type DatosAnio,
+  type DatosAsignatura,
   type DatosModulo,
-  type DatosNivel,
   type DatosPlanEstudio,
-  type MateriaEstudio,
-  type ModuloConMaterias,
+  type ModuloConAsignaturas,
   type ModuloEstudio,
-  type NivelConModulos,
-  type NivelEstudio,
   type PlanEstudio,
 } from '../domain/planesEstudio';
 
@@ -37,12 +37,13 @@ export class PlanEstudioError extends Error {
 }
 
 export interface PlanEstudioListado extends PlanEstudio {
-  cantidadNiveles: number;
+  cantidadAnios: number;
 }
 
 function leerPlan(id: string, data: Record<string, unknown>): PlanEstudio {
   return {
     id,
+    nombre: String(data.nombre ?? ''),
     orientacion: String(data.orientacion ?? ''),
     resolucion: String(data.resolucion ?? ''),
     validezNacional: String(data.validezNacional ?? ''),
@@ -53,11 +54,9 @@ function leerPlan(id: string, data: Record<string, unknown>): PlanEstudio {
   };
 }
 
-function leerNivel(id: string, data: Record<string, unknown>): NivelEstudio {
+function leerAnio(id: string, data: Record<string, unknown>): AnioEstudio {
   return {
     id,
-    codigo: String(data.codigo ?? ''),
-    anioCurso: Number(data.anioCurso ?? 0),
     nombre: String(data.nombre ?? ''),
     orden: Number(data.orden ?? 0),
     enUso: data.enUso === true,
@@ -73,15 +72,12 @@ function leerModulo(id: string, data: Record<string, unknown>): ModuloEstudio {
   };
 }
 
-function leerMateria(id: string, data: Record<string, unknown>): MateriaEstudio {
+function leerAsignatura(id: string, data: Record<string, unknown>): AsignaturaEstudio {
   return {
     id,
     nombre: String(data.nombre ?? ''),
     orden: Number(data.orden ?? 0),
-    area: String(data.area ?? ''),
-    areaNombre: String(data.areaNombre ?? ''),
     codigo: String(data.codigo ?? ''),
-    comparteEntreNiveles: data.comparteEntreNiveles === true,
     activo: data.activo !== false,
     enUso: data.enUso === true,
   };
@@ -94,45 +90,45 @@ function porOrden<T extends { orden: number; nombre: string }>(items: T[]): T[] 
 export async function listarPlanesEstudio(db: Firestore): Promise<PlanEstudioListado[]> {
   const snap = await getDocs(collection(db, 'planesEstudio'));
   const planes = await Promise.all(snap.docs.map(async (item) => {
-    const niveles = await getDocs(collection(db, 'planesEstudio', item.id, 'niveles'));
+    const anios = await getDocs(collection(db, 'planesEstudio', item.id, 'anios'));
     return {
       ...leerPlan(item.id, item.data()),
-      cantidadNiveles: niveles.size,
+      cantidadAnios: anios.size,
     };
   }));
-  return planes.sort((a, b) => a.orientacion.localeCompare(b.orientacion, 'es') || a.resolucion.localeCompare(b.resolucion, 'es'));
+  return planes.sort((a, b) => a.nombre.localeCompare(b.nombre, 'es') || a.resolucion.localeCompare(b.resolucion, 'es'));
 }
 
 export async function leerArbolPlan(db: Firestore, planId: string): Promise<ArbolPlan> {
   const planSnap = await getDoc(doc(db, 'planesEstudio', planId));
   if (!planSnap.exists()) throw new PlanEstudioError('Ese plan no existe.');
-  const nivelesSnap = await getDocs(collection(db, 'planesEstudio', planId, 'niveles'));
-  const niveles: NivelConModulos[] = [];
-  for (const nivelDoc of nivelesSnap.docs) {
-    const modulosSnap = await getDocs(collection(db, 'planesEstudio', planId, 'niveles', nivelDoc.id, 'modulos'));
-    const modulos: ModuloConMaterias[] = [];
+  const aniosSnap = await getDocs(collection(db, 'planesEstudio', planId, 'anios'));
+  const anios: AnioConModulos[] = [];
+  for (const anioDoc of aniosSnap.docs) {
+    const modulosSnap = await getDocs(collection(db, 'planesEstudio', planId, 'anios', anioDoc.id, 'modulos'));
+    const modulos: ModuloConAsignaturas[] = [];
     for (const moduloDoc of modulosSnap.docs) {
-      const materiasSnap = await getDocs(collection(
+      const asignaturasSnap = await getDocs(collection(
         db,
         'planesEstudio',
         planId,
-        'niveles',
-        nivelDoc.id,
+        'anios',
+        anioDoc.id,
         'modulos',
         moduloDoc.id,
-        'materias',
+        'asignaturas',
       ));
-      const materias = porOrden(materiasSnap.docs.map((item) => leerMateria(item.id, item.data())));
-      modulos.push({ ...leerModulo(moduloDoc.id, moduloDoc.data()), materias });
+      const asignaturas = porOrden(asignaturasSnap.docs.map((item) => leerAsignatura(item.id, item.data())));
+      modulos.push({ ...leerModulo(moduloDoc.id, moduloDoc.data()), asignaturas });
     }
-    niveles.push({
-      ...leerNivel(nivelDoc.id, nivelDoc.data()),
+    anios.push({
+      ...leerAnio(anioDoc.id, anioDoc.data()),
       modulos: porOrden(modulos),
     });
   }
   return {
     plan: leerPlan(planSnap.id, planSnap.data()),
-    niveles: porOrden(niveles),
+    anios: porOrden(anios),
   };
 }
 
@@ -161,8 +157,12 @@ export async function actualizarPlanEstudio(
 ): Promise<void> {
   const preparado = prepararPlanEstudio(input);
   if (!preparado.ok) throw new PlanEstudioError(preparado.error);
+  const { nombre, orientacion, resolucion, validezNacional } = preparado.datos;
   await updateDoc(doc(db, 'planesEstudio', planId), {
-    ...preparado.datos,
+    nombre,
+    orientacion,
+    resolucion,
+    validezNacional,
     activo: input.activo,
   });
 }
@@ -170,73 +170,73 @@ export async function actualizarPlanEstudio(
 export async function eliminarPlanEstudio(db: Firestore, planId: string): Promise<void> {
   const arbol = await leerArbolPlan(db, planId);
   if (!puedeEliminarPorUso(arbol.plan.enUso)) {
-    throw new PlanEstudioError('Este plan ya tiene materias con notas. No se puede borrar.');
+    throw new PlanEstudioError('Este plan ya tiene notas. No se puede borrar.');
   }
-  if (arbol.niveles.length > 0) {
-    throw new PlanEstudioError('Para eliminar el plan, primero borrá los niveles.');
+  if (arbol.anios.length > 0) {
+    throw new PlanEstudioError('Para eliminar el plan, primero borrá los planes o años.');
   }
   await deleteDoc(doc(db, 'planesEstudio', planId));
 }
 
-export async function crearNivel(db: Firestore, planId: string, input: DatosNivel): Promise<string> {
-  const preparado = prepararNivel(input);
+export async function crearAnio(db: Firestore, planId: string, input: DatosAnio): Promise<string> {
+  const preparado = prepararAnio(input);
   if (!preparado.ok) throw new PlanEstudioError(preparado.error);
-  const ref = doc(collection(db, 'planesEstudio', planId, 'niveles'));
+  const ref = doc(collection(db, 'planesEstudio', planId, 'anios'));
   await setDoc(ref, { ...preparado.datos, enUso: false });
   return ref.id;
 }
 
-export async function actualizarNivel(
+export async function actualizarAnio(
   db: Firestore,
   planId: string,
-  nivelId: string,
-  input: DatosNivel,
+  anioId: string,
+  input: DatosAnio,
 ): Promise<void> {
-  const preparado = prepararNivel(input);
+  const preparado = prepararAnio(input);
   if (!preparado.ok) throw new PlanEstudioError(preparado.error);
-  const { codigo, anioCurso, nombre, orden } = preparado.datos;
-  await updateDoc(doc(db, 'planesEstudio', planId, 'niveles', nivelId), { codigo, anioCurso, nombre, orden });
+  const { nombre, orden } = preparado.datos;
+  await updateDoc(doc(db, 'planesEstudio', planId, 'anios', anioId), { nombre, orden });
 }
 
-export async function eliminarNivel(db: Firestore, planId: string, nivelId: string): Promise<void> {
+export async function eliminarAnio(db: Firestore, planId: string, anioId: string): Promise<void> {
   const arbol = await leerArbolPlan(db, planId);
-  const nivel = arbol.niveles.find((item) => item.id === nivelId);
-  if (!nivel) throw new PlanEstudioError('Ese nivel no existe.');
+  const anio = arbol.anios.find((item) => item.id === anioId);
+  if (!anio) throw new PlanEstudioError('Ese plan o año no existe.');
   const hijos = [
-    ...nivel.modulos,
-    ...nivel.modulos.flatMap((modulo) => modulo.materias),
+    ...anio.modulos,
+    ...anio.modulos.flatMap((modulo) => modulo.asignaturas),
   ];
-  if (!puedeEliminarContenedor(nivel.enUso, hijos)) {
-    throw new PlanEstudioError('Ese nivel ya tiene materias con notas. No se puede borrar.');
+  if (!puedeEliminarContenedor(anio.enUso, hijos)) {
+    throw new PlanEstudioError('Ese plan o año ya tiene asignaturas con notas. No se puede borrar.');
   }
   await borrarRefs(db, [
-    ...nivel.modulos.flatMap((modulo) => [
-      ...modulo.materias.map((materia) => doc(
+    ...anio.modulos.flatMap((modulo) => [
+      ...modulo.asignaturas.map((asignatura) => doc(
         db,
         'planesEstudio',
         planId,
-        'niveles',
-        nivelId,
+        'anios',
+        anioId,
         'modulos',
         modulo.id,
-        'materias',
-        materia.id,
+        'asignaturas',
+        asignatura.id,
       )),
-      doc(db, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', modulo.id),
+      doc(db, 'planesEstudio', planId, 'anios', anioId, 'modulos', modulo.id),
     ]),
-    doc(db, 'planesEstudio', planId, 'niveles', nivelId),
+    doc(db, 'planesEstudio', planId, 'anios', anioId),
   ]);
 }
 
 export async function crearModulo(
   db: Firestore,
   planId: string,
-  nivelId: string,
+  anioId: string,
   input: DatosModulo,
 ): Promise<string> {
   const preparado = prepararModulo(input);
   if (!preparado.ok) throw new PlanEstudioError(preparado.error);
-  const ref = doc(collection(db, 'planesEstudio', planId, 'niveles', nivelId, 'modulos'));
+  const ref = doc(collection(db, 'planesEstudio', planId, 'anios', anioId, 'modulos'));
   await setDoc(ref, { ...preparado.datos, enUso: false });
   return ref.id;
 }
@@ -244,94 +244,94 @@ export async function crearModulo(
 export async function actualizarModulo(
   db: Firestore,
   planId: string,
-  nivelId: string,
+  anioId: string,
   moduloId: string,
   input: DatosModulo,
 ): Promise<void> {
   const preparado = prepararModulo(input);
   if (!preparado.ok) throw new PlanEstudioError(preparado.error);
   const { nombre, orden } = preparado.datos;
-  await updateDoc(doc(db, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId), { nombre, orden });
+  await updateDoc(doc(db, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId), { nombre, orden });
 }
 
 export async function eliminarModulo(
   db: Firestore,
   planId: string,
-  nivelId: string,
+  anioId: string,
   moduloId: string,
 ): Promise<void> {
   const arbol = await leerArbolPlan(db, planId);
-  const modulo = arbol.niveles.find((nivel) => nivel.id === nivelId)?.modulos.find((item) => item.id === moduloId);
+  const modulo = arbol.anios.find((anio) => anio.id === anioId)?.modulos.find((item) => item.id === moduloId);
   if (!modulo) throw new PlanEstudioError('Ese módulo no existe.');
-  if (!puedeEliminarContenedor(modulo.enUso, modulo.materias)) {
-    throw new PlanEstudioError('Ese módulo ya tiene materias con notas. No se puede borrar.');
+  if (!puedeEliminarContenedor(modulo.enUso, modulo.asignaturas)) {
+    throw new PlanEstudioError('Ese módulo ya tiene asignaturas con notas. No se puede borrar.');
   }
   await borrarRefs(db, [
-    ...modulo.materias.map((materia) => doc(
+    ...modulo.asignaturas.map((asignatura) => doc(
       db,
       'planesEstudio',
       planId,
-      'niveles',
-      nivelId,
+      'anios',
+      anioId,
       'modulos',
       moduloId,
-      'materias',
-      materia.id,
+      'asignaturas',
+      asignatura.id,
     )),
-    doc(db, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId),
+    doc(db, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId),
   ]);
 }
 
-export async function crearMateria(
+export async function crearAsignatura(
   db: Firestore,
   planId: string,
-  nivelId: string,
+  anioId: string,
   moduloId: string,
-  input: DatosMateria,
+  input: DatosAsignatura,
 ): Promise<string> {
-  const preparado = prepararMateria(input);
+  const preparado = prepararAsignatura(input);
   if (!preparado.ok) throw new PlanEstudioError(preparado.error);
-  const ref = doc(collection(db, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId, 'materias'));
+  const ref = doc(collection(db, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId, 'asignaturas'));
   await setDoc(ref, { ...preparado.datos, enUso: false });
   return ref.id;
 }
 
-export async function actualizarMateria(
+export async function actualizarAsignatura(
   db: Firestore,
   planId: string,
-  nivelId: string,
+  anioId: string,
   moduloId: string,
-  materiaId: string,
-  input: DatosMateria,
+  asignaturaId: string,
+  input: DatosAsignatura,
 ): Promise<void> {
-  const preparado = prepararMateria(input);
+  const preparado = prepararAsignatura(input);
   if (!preparado.ok) throw new PlanEstudioError(preparado.error);
-  const ref = doc(db, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId, 'materias', materiaId);
+  const ref = doc(db, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId, 'asignaturas', asignaturaId);
   const snap = await getDoc(ref);
-  if (!snap.exists()) throw new PlanEstudioError('Esa materia no existe.');
-  const { nombre, orden, area, areaNombre, codigo, comparteEntreNiveles, activo } = preparado.datos;
-  await updateDoc(ref, { nombre, orden, area, areaNombre, codigo, comparteEntreNiveles, activo });
+  if (!snap.exists()) throw new PlanEstudioError('Esa asignatura no existe.');
+  const { nombre, orden, codigo, activo } = preparado.datos;
+  await updateDoc(ref, { nombre, orden, codigo, activo });
 }
 
-export async function eliminarMateria(
+export async function eliminarAsignatura(
   db: Firestore,
   planId: string,
-  nivelId: string,
+  anioId: string,
   moduloId: string,
-  materiaId: string,
+  asignaturaId: string,
 ): Promise<void> {
-  const ref = doc(db, 'planesEstudio', planId, 'niveles', nivelId, 'modulos', moduloId, 'materias', materiaId);
+  const ref = doc(db, 'planesEstudio', planId, 'anios', anioId, 'modulos', moduloId, 'asignaturas', asignaturaId);
   const snap = await getDoc(ref);
-  if (!snap.exists()) throw new PlanEstudioError('Esa materia no existe.');
+  if (!snap.exists()) throw new PlanEstudioError('Esa asignatura no existe.');
   if (!puedeEliminarPorUso(snap.data().enUso === true)) {
-    throw new PlanEstudioError('Esa materia ya tiene notas. No se puede borrar. Podés desactivarla para que no entre en los RAC nuevos.');
+    throw new PlanEstudioError('Esa asignatura ya tiene notas. No se puede borrar. Podés desactivarla para que no entre en los RAC nuevos.');
   }
   await deleteDoc(ref);
 }
 
 async function borrarRefs(db: Firestore, refs: Array<ReturnType<typeof doc>>): Promise<void> {
   if (refs.length > 450) {
-    throw new PlanEstudioError('Hay demasiadas materias para borrarlas juntas.');
+    throw new PlanEstudioError('Hay demasiadas asignaturas para borrarlas juntas.');
   }
   const batch = writeBatch(db);
   for (const ref of refs) batch.delete(ref);

@@ -4,13 +4,12 @@ rules_version = '2';
 // Se siguen aceptando Administrador y Profesor para no dejar afuera las cuentas ya cargadas.
 //
 // planesEstudio/{planId}
-//   orientacion, resolucion, validezNacional: texto obligatorio
+//   nombre, orientacion, resolucion, validezNacional: texto obligatorio
 //   activo, enUso: bool. creadoPor y fechaCreacion no cambian.
-//   niveles/{nivelId}: codigo, anioCurso, nombre, orden, enUso
+//   anios/{anioId}: nombre, orden, enUso. En la pantalla: «Planes o años».
 //   modulos/{moduloId}: nombre, orden, enUso
-//   materias/{materiaId}: nombre, orden, area (clave), areaNombre, codigo (vacío o n.m),
-//     comparteEntreNiveles, activo, enUso
-// Admin escribe. Lectura lee el árbol. Docente lee la materia si tiene esa área.
+//   asignaturas/{asignaturaId}: nombre, orden, codigo (vacío o n.m), activo, enUso
+// Admin escribe. Lectura lee el árbol. El docente no lo lee hasta la etapa de la planilla.
 // Borrar solo si enUso no es true. La colección empieza vacía: nadie siembra planes.
 service cloud.firestore {
   match /databases/{database}/documents {
@@ -124,7 +123,8 @@ service cloud.firestore {
 
     function planEstudioForma() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['orientacion', 'resolucion', 'validezNacional', 'activo', 'enUso', 'creadoPor', 'fechaCreacion'])
+      return d.keys().hasOnly(['nombre', 'orientacion', 'resolucion', 'validezNacional', 'activo', 'enUso', 'creadoPor', 'fechaCreacion'])
+        && textoPlano(d.nombre, 160)
         && textoPlano(d.orientacion, 160)
         && textoPlano(d.resolucion, 160)
         && textoPlano(d.validezNacional, 160)
@@ -138,13 +138,9 @@ service cloud.firestore {
         && d.fechaCreacion.size() <= 40;
     }
 
-    function nivelEstudioValido() {
+    function anioEstudioValido() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['codigo', 'anioCurso', 'nombre', 'orden', 'enUso'])
-        && textoPlano(d.codigo, 12)
-        && d.anioCurso is int
-        && d.anioCurso >= 1
-        && d.anioCurso <= 9
+      return d.keys().hasOnly(['nombre', 'orden', 'enUso'])
         && textoPlano(d.nombre, 160)
         && ordenValido(d.orden)
         && d.enUso is bool;
@@ -158,15 +154,12 @@ service cloud.firestore {
         && d.enUso is bool;
     }
 
-    function materiaEstudioValida() {
+    function asignaturaEstudioValida() {
       let d = request.resource.data;
-      return d.keys().hasOnly(['nombre', 'orden', 'area', 'areaNombre', 'codigo', 'comparteEntreNiveles', 'activo', 'enUso'])
+      return d.keys().hasOnly(['nombre', 'orden', 'codigo', 'activo', 'enUso'])
         && textoPlano(d.nombre, 160)
         && ordenValido(d.orden)
-        && claveAreaValida(d.area)
-        && textoPlano(d.areaNombre, 80)
         && codigoMateriaValido(d.codigo)
-        && d.comparteEntreNiveles is bool
         && d.activo is bool
         && d.enUso is bool;
     }
@@ -304,8 +297,9 @@ service cloud.firestore {
 
     // Currícula que carga el admin. Vacía hasta que alguien la escriba.
     // `planes/{planId}` sigue legible para el RAC que ya apunta a un espacio.
+    // El docente no lee este árbol hasta la etapa de la planilla.
     match /planesEstudio/{planId} {
-      allow read: if esStaff();
+      allow read: if esAdmin() || esLectura();
       allow create: if esAdmin() && planEstudioForma() && request.resource.data.creadoPor == request.auth.uid;
       allow update: if esAdmin()
         && planEstudioForma()
@@ -314,27 +308,22 @@ service cloud.firestore {
         && enUsoNoRetrocede();
       allow delete: if esAdmin() && resource.data.enUso != true;
 
-      match /niveles/{nivelId} {
-        allow read: if esStaff();
-        allow create: if esAdmin() && nivelEstudioValido();
-        allow update: if esAdmin() && nivelEstudioValido() && enUsoNoRetrocede();
+      match /anios/{anioId} {
+        allow read: if esAdmin() || esLectura();
+        allow create: if esAdmin() && anioEstudioValido();
+        allow update: if esAdmin() && anioEstudioValido() && enUsoNoRetrocede();
         allow delete: if esAdmin() && resource.data.enUso != true;
 
         match /modulos/{moduloId} {
-          allow read: if esStaff();
+          allow read: if esAdmin() || esLectura();
           allow create: if esAdmin() && moduloEstudioValido();
           allow update: if esAdmin() && moduloEstudioValido() && enUsoNoRetrocede();
           allow delete: if esAdmin() && resource.data.enUso != true;
 
-          match /materias/{materiaId} {
-            allow get: if esAdmin() || esLectura()
-              || (esDocente() && areaAsignada(resource.data.area));
-            // El listado del admin no filtra. El docente tiene que filtrar por su área:
-            // las reglas no recortan la consulta.
-            allow list: if esAdmin() || esLectura()
-              || (esDocente() && areaAsignada(resource.data.area));
-            allow create: if esAdmin() && materiaEstudioValida();
-            allow update: if esAdmin() && materiaEstudioValida() && enUsoNoRetrocede();
+          match /asignaturas/{asignaturaId} {
+            allow read: if esAdmin() || esLectura();
+            allow create: if esAdmin() && asignaturaEstudioValida();
+            allow update: if esAdmin() && asignaturaEstudioValida() && enUsoNoRetrocede();
             allow delete: if esAdmin() && resource.data.enUso != true;
           }
         }
