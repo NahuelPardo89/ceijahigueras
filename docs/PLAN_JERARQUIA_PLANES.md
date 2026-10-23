@@ -1,12 +1,12 @@
 # Plan de trabajo: jerarquía de Planes de Estudio
 
-Documento para que Nahuel lo apruebe **antes** de ejecutar. No cambia código, no siembra datos y no se despliega.
+Nahuel aprobó este plan. La corrección del 23 de octubre de 2026 es que la **orientación se mantiene**. El resto queda como estaba. No cambia código, no siembra datos y no se despliega hasta que se ejecute en otro paso.
 
 Fecha de relevamiento: 23 de octubre de 2026. Rama: `cursor/planes-de-estudio-1b42` (PR #6), apilada sobre `cursor/saneamiento-legado-b791`. La pantalla de este PR todavía no está en producción.
 
 ## Qué pidió Nahuel
 
-1. El plan de estudio se crea a mano, con **nombre**, **validez nacional** y **resolución**. La orientación deja de ser un campo propio del plan.
+1. El plan de estudio se crea a mano, con **nombre**, **validez nacional**, **resolución** y **orientación**. La orientación sigue siendo un campo propio. El título del plan es el nombre.
 2. Debajo del plan van **planes o años**. Es la misma cosa: la persona le pone el nombre. No existe un “nivel” aparte.
 3. Dentro de cada plan/año van los **módulos**.
 4. Dentro de cada módulo van las **asignaturas**, que también se llaman **áreas**. Hoy el modelo separa “materia” y “área”.
@@ -18,13 +18,13 @@ Ejemplo **solo de referencia**, para entender el anidado. No se hardcodea y no s
 - plan B: módulos 4, 5, 6 y 7
 - plan C: módulos 8 y 9
 
-## Decisiones que este documento recomienda
+## Decisiones
 
-Nahuel puede tachar cualquiera. Hasta que no las confirme, no se ejecuta.
+Nahuel aprobó D2–D6 tal cual. D1 queda corregida: la orientación se mantiene.
 
-| # | Tema | Recomendación | Si la rechaza |
+| # | Tema | Decisión | Nota |
 |---|---|---|---|
-| D1 | Orientación | Se **quita** del plan nuevo. No queda obligatoria ni opcional. No se arma un catálogo aparte. El título es `nombre`. Si hace falta decir “Economía y Administración”, va escrito en ese nombre o en el nombre del plan/año. | Si la quiere anotada igual, se agrega un texto libre opcional, vacío por defecto, que no se usa como título ni para asignar docentes. |
+| D1 | Orientación | Se **mantiene** en el plan de estudio, obligatoria, junto con nombre, validez nacional y resolución. No es el título: el título es `nombre`. En la lista y en el editor se muestra como campo propio. | No se arma un catálogo aparte. Secretaría escribe el texto (por ejemplo “Economía y Administración”). |
 | D2 | Cómo se llama el hijo del plan | Una sola subcolección, `anios`. En la pantalla el título de la sección es “Planes o años”. Cada ítem tiene un `nombre` libre (“Plan A”, “1° año”, “Plan C”). No hay `codigo` ni `anioCurso` obligatorios, y no hay entidad `niveles`. | Si prefiere otro id de colección (`tramos`), se cambia solo el path. La pantalla sigue diciendo “Planes o años”. |
 | D3 | Materia y área | Se unifican en **asignatura**. Un nombre, un id opaco. No hay un segundo campo `area` / `areaNombre` ni la lista fija Matemática, Naturales, Sociales, Inglés, Lengua, ATP. | Si el área tiene que seguir siendo un grupo (varios profesores de “Matemática” sobre distintas asignaturas), se mantiene un texto libre de área, distinto del nombre, y se dice explícito en la aprobación. |
 | D4 | Código `n.m` (ej. `1.3`) | Se **conserva opcional** en la asignatura, para cruzar con una planilla. Vacío si no hace falta. | Si no lo quiere, se saca en el mismo paso y se borran el validador y la ayuda. |
@@ -137,8 +137,8 @@ Este PR no está desplegado. `planesEstudio` no debería tener documentos reales
 
 | Pedido | Hoy en este PR | Hoy en las pantallas viejas |
 |---|---|---|
-| Plan con nombre, validez nacional y resolución | El alta pide orientación, resolución y validez. No hay `nombre`. El título es la orientación. | `Plan` tiene `nombre` y también `orientacion`, `codigo`, `anioPlan`, `ciclo` y dos resoluciones. |
-| Orientación fuera del plan | Es obligatoria en el documento, en las reglas y en los tests. | Sigue en el plan viejo y se copia al estudiante. |
+| Plan con nombre, validez nacional, resolución y orientación | El alta pide orientación, resolución y validez. No hay `nombre`. El título de la lista es la orientación. | `Plan` tiene `nombre` y también `orientacion`, `codigo`, `anioPlan`, `ciclo` y dos resoluciones. |
+| La orientación sigue, y el título pasa a ser el nombre | La orientación es obligatoria y hoy ocupa el lugar del título. | Sigue en el plan viejo y se copia al estudiante. |
 | Debajo, planes o años, con el nombre que elija la persona | Subcolección `niveles`, con código, año de cursada 1–9 y nombre. La ayuda dice que A es 1°, B es 2° y C es 3°. | Tres planes fijos A/B/C, cada uno es un documento `planes/{id}`, no un hijo de un plan de estudio. |
 | Sin entidad “nivel” | `NivelEstudio` es la entidad del medio. | No hay niveles; el “año” está metido en el id y en `anioPlan`. |
 | Módulos dentro de ese plan/año | `modulos` cuelgan del nivel. El nombre es libre. Esto está cerca del pedido. | `modulo` es un texto en el espacio (`M1`…`M9`), no un documento. |
@@ -153,7 +153,7 @@ Ids opacos en todos los niveles. El nombre se puede corregir. El id no.
 
 ```
 planesEstudio/{planId}
-  nombre, validezNacional, resolucion
+  nombre, validezNacional, resolucion, orientacion
   activo, enUso, creadoPor, fechaCreacion
 
   anios/{anioId}                         ← en la pantalla: “Planes o años”
@@ -172,14 +172,17 @@ planesEstudio/{planId}
 
 **Plan de estudio**
 
-- `nombre`: texto obligatorio, una línea, hasta 160. Es el título.
+- `nombre`: texto obligatorio, una línea, hasta 160. Es el título en la lista y en el encabezado del editor.
 - `validezNacional`: texto obligatorio, misma regla.
 - `resolucion`: texto obligatorio, misma regla.
+- `orientacion`: texto obligatorio, misma regla. Campo propio, al lado de los otros tres. No reemplaza al nombre.
 - `activo`: bool. En `false`, no entra en altas nuevas cuando esas pantallas pasen a este árbol. Sigue visible para el admin.
 - `enUso`: bool. Lo pone en `true` el día en que una inscripción o una nota apunte a este plan. En este tramo de jerarquía ese cable **no se conecta** (igual que hoy). La regla ya impide apagarlo y borrar.
 - `creadoPor`, `fechaCreacion`: se fijan al crear y no se editan.
 
-No van `orientacion`, `codigo`, `anioPlan`, `ciclo` ni `version`.
+No van `codigo`, `anioPlan`, `ciclo` ni `version`.
+
+En la pantalla, la lista muestra el `nombre` como título y, debajo, la orientación, la resolución y la validez nacional. El formulario de alta y el de edición tienen los cuatro campos, con Nombre primero y Orientación como campo propio. El encabezado del editor usa el nombre; la bajada identifica la orientación, la resolución y la validez, sin usar la orientación como título.
 
 **Plan o año** (`anios`)
 
@@ -210,7 +213,7 @@ La asignatura **es** el área a los efectos de la asignación. Cuando se migre U
 ### Integridad
 
 - Borrar plan, plan/año, módulo o asignatura solo si `enUso` no es `true` y ningún hijo está en uso. Si ya hay notas o inscripciones, el botón no está: se desactiva (`activo: false` en plan o asignatura).
-- Editar un plan ya usado: se puede cambiar nombre, resolución, validez, nombres, orden, código y `activo`. No se puede cambiar el id. Las notas ya guardadas conservan el nombre que se copió al abrir el RAC. Las notas nuevas usan el nombre vigente.
+- Editar un plan ya usado: se puede cambiar nombre, orientación, resolución, validez, nombres, orden, código y `activo`. No se puede cambiar el id. Las notas ya guardadas conservan el nombre que se copió al abrir el RAC. Las notas nuevas usan el nombre vigente.
 - `enUso` no vuelve a `false`. Hoy nada lo pone en `true`. Sigue siendo un hueco: hay que marcarlo en el mismo paso en que se escriba la primera nota o la inscripción (plan, plan/año, módulo y asignatura juntos, porque las reglas no pueden listar hijos). Ese cable es un tramo posterior, no este.
 - El batch de borrado sigue con tope 450. Un plan de la sede no llega a ese número. Si llegara, el borrado tiene que partirse; no hace falta Cloud Functions.
 - No se reescriben `estudiantes`, `rac` ni `calificaciones` al editar el catálogo.
@@ -225,20 +228,20 @@ Cada paso deja `npm run lint`, `npm run typecheck`, `npm run test:domain` y `npm
 
 ### Paso 0. Aprobación
 
-Nahuel responde D1–D6. Si cambia una recomendación, se ajusta este documento en la misma rama y recién ahí se codea.
+Hecho. Nahuel aprobó D2–D6 tal cual y corrigió D1: la orientación se mantiene. Con este documento se puede codear.
 
 ### Paso 1. Dominio
 
 Archivos: `src/domain/planesEstudio.ts`, `tests/planes-estudio.test.ts`.
 
-- Reemplazar `PlanEstudio.orientacion` por `nombre`. `prepararPlanEstudio` exige nombre, validez y resolución.
+- Agregar `nombre` y **mantener** `orientacion`. `prepararPlanEstudio` exige nombre, validez nacional, resolución y orientación. Los cuatro son texto obligatorio de una línea.
 - Borrar `NivelEstudio`, `DatosNivel`, `prepararNivel`. Agregar el plan/año (`nombre`, `orden`) con los mismos topes de texto y de orden que hoy tiene el módulo.
 - Renombrar materia → asignatura en tipos y en `prepararMateria`. Sacar `area`, `areaNombre`, `claveArea` como requisito, `resolverArea`, `AREAS_SUGERIDAS`, `areasDelArbol` y `comparteEntreNiveles`.
 - Dejar `codigoMateriaValido` si D4 se aprueba como está.
 - `puedeAbrirRacEnNivel` pasa a mirar asignaturas activas del plan/año.
 - `copiaParaCalificacion` deja de emitir `compartidoM8` desde un checkbox de área. Hasta que la planilla migre, esa copia puede mandar `compartidoM8: false` fijo, documentado en el test, porque el RAC nuevo todavía no se abre desde este árbol.
 
-Criterio: un plan válido no trae planes/años ni asignaturas. Falta el nombre, la validez o la resolución → error. Un plan/año sin nombre → error. Una asignatura sin área aparte es válida. El id no cambia al renombrar. El fuente del dominio no menciona `PLANES_SEDE`, `cargarPlanesSede` ni `AREAS_SUGERIDAS`.
+Criterio: un plan válido no trae planes/años ni asignaturas. Falta el nombre, la orientación, la validez o la resolución → error. Un plan/año sin nombre → error. Una asignatura sin área aparte es válida. El id no cambia al renombrar. El fuente del dominio no menciona `PLANES_SEDE`, `cargarPlanesSede` ni `AREAS_SUGERIDAS`. El test deja de tratar la orientación como título y afirma que viaja junto con el nombre.
 
 ### Paso 2. Servicio
 
@@ -247,7 +250,7 @@ Archivo: `src/services/planesEstudio.ts`.
 - Paths: `anios` y `asignaturas` en lugar de `niveles` y `materias`.
 - Altas con `enUso: false`. Los updates no tocan `enUso` ni `creadoPor` ni `fechaCreacion`.
 - Borrar sigue leyendo el árbol y rechazando si hay `enUso` en la rama.
-- Listado ordenado por `nombre`, no por orientación.
+- Listado ordenado por `nombre`. La orientación se lee y se muestra, pero no ordena ni titula la fila.
 
 Criterio: crear plan → crear plan/año → crear módulo → crear asignatura, con ids opacos, en el emulador de reglas (lo cubre el paso 3).
 
@@ -255,13 +258,13 @@ Criterio: crear plan → crear plan/año → crear módulo → crear asignatura,
 
 Archivos: `firestore.rules`, `tests/planes-estudio-reglas.test.ts`.
 
-- `planEstudioForma`: `nombre` en lugar de `orientacion`. `keys().hasOnly` exacto.
+- `planEstudioForma`: suma `nombre` y **conserva** `orientacion`. Los dos son `textoPlano` de hasta 160. `keys().hasOnly` exacto, con los dos campos.
 - Reemplazar `nivelEstudioValido` por la forma del plan/año (`nombre`, `orden`, `enUso`).
 - `materiaEstudioValida` pasa a la asignatura, sin `area`, `areaNombre` ni `comparteEntreNiveles`.
 - Match `anios` / `modulos` / `asignaturas`. Admin escribe. Lectura lee. Docente no lee este árbol en este tramo (D3). Borrar solo si `enUso != true`. `enUso` no retrocede.
 - No modificar el match de `planes` / `espacios` ni el de calificaciones.
 
-Criterio: sin los tres datos el create falla. Lectura lee una asignatura. Docente y pendiente no escriben. Un módulo `enUso` no se borra ni se apaga. Un área “nueva” ya no es un caso: el nombre de la asignatura es libre y el test lo muestra con un nombre que no está en ninguna lista fija.
+Criterio: sin nombre, sin orientación, sin validez o sin resolución el create falla. Un update que borra la orientación también falla. Lectura lee una asignatura. Docente y pendiente no escriben. Un módulo `enUso` no se borra ni se apaga. Un área “nueva” ya no es un caso: el nombre de la asignatura es libre y el test lo muestra con un nombre que no está en ninguna lista fija.
 
 Las reglas siguen siendo un prototipo: hay que revisarlas antes de compartir el proyecto.
 
@@ -269,20 +272,20 @@ Las reglas siguen siendo un prototipo: hay que revisarlas antes de compartir el 
 
 Archivo: `src/components/admin/PlanesPanel.tsx`. El tema y los componentes `src/components/ui` se reutilizan. No se rediseña el resto de la app.
 
-- Alta y edición del plan: Nombre, Validez nacional, Resolución. Sin orientación.
+- Alta y edición del plan: Nombre, Orientación, Validez nacional, Resolución. Los cuatro obligatorios. El nombre es el título; la orientación es un campo propio, en el formulario y en la bajada, no el encabezado.
 - Sección “Planes o años”. Formulario: nombre y orden. Sin código y sin año de cursada. Sacar la ayuda de “A es 1°, B es 2° y C es 3°” y los placeholders `A` y `1° año`.
 - Módulos igual que ahora, colgando del plan/año.
 - Asignatura: nombre, orden, código opcional (si D4 sigue), casilla de activa. Sin select de área, sin “Otra área…”, sin “Se comparte entre niveles”.
 - Borrar con el mismo diálogo de confirmación, solo si la rama no está en uso.
 - Copys en rioplatense, botones en infinitivo (“Agregar plan”, “Agregar módulo”, “Agregar asignatura”).
 
-Criterio manual, contra el emulador, sin sembrar: vacío → alta con los tres campos → un plan/año con el nombre “Plan A” → un módulo → una asignatura → editar el nombre de la asignatura y ver que el id no hace falta mostrarlo y el nombre nuevo queda. No aparece un nivel, ni una orientación, ni una lista de áreas sugeridas.
+Criterio manual, contra el emulador, sin sembrar: vacío → alta con los cuatro campos → la lista muestra el nombre como título y la orientación debajo → un plan/año con el nombre “Plan A” → un módulo → una asignatura → editar el nombre de la asignatura y ver que el id no hace falta mostrarlo y el nombre nuevo queda. Editar la orientación no cambia el título. No aparece un nivel ni una lista de áreas sugeridas.
 
 ### Paso 5. Texto para el próximo agente
 
 Archivo: `AGENTS.md`.
 
-Actualizar la tabla y el párrafo de Planes de Estudio: nombre, validez, resolución; hijos “planes o años”; módulos; asignaturas; sin seed; `planesSede.ts` sigue alimentando solo la colección vieja.
+Actualizar la tabla y el párrafo de Planes de Estudio: nombre, orientación, validez, resolución; el título es el nombre; hijos “planes o años”; módulos; asignaturas; sin seed; `planesSede.ts` sigue alimentando solo la colección vieja.
 
 ### Paso 6. Lo que este tramo no toca
 
@@ -298,7 +301,7 @@ Dejar como están, y verificar que sus tests sigan verdes:
 
 Cuando Nahuel pida que las notas y la inscripción usen el árbol nuevo:
 
-1. El alta de estudiante elige un plan de estudio y un plan/año, y abre el RAC con las asignaturas activas. `planActualId` pasa a ser el id del plan/año (o del plan de estudio: **decisión abierta**, porque hoy es un solo id). La columna `orientacion` del estudiante, si sigue, copia el `nombre` del plan, no un campo aparte.
+1. El alta de estudiante elige un plan de estudio y un plan/año, y abre el RAC con las asignaturas activas. `planActualId` pasa a ser el id del plan/año (o del plan de estudio: **decisión abierta**, porque hoy es un solo id). La columna `orientacion` del estudiante, si sigue, copia el campo `orientacion` del plan de estudio.
 2. Al escribir la primera nota o la inscripción, marcar `enUso` en asignatura, módulo, plan/año y plan en el mismo batch.
 3. Usuarios asigna docentes por id de asignatura. Recién ahí la regla del docente vuelve a leer esa asignación. Se deja de usar `docentes.areas` por slug.
 4. Planilla, RAC, ciclos, exportar y equivalencias leen el árbol nuevo. Recién ahí se puede dejar de llamar `cargarPlanesSede` desde el seed y la migración, y revisar si `PLANES_SEDE` se archiva.
@@ -307,18 +310,22 @@ Cuando Nahuel pida que las notas y la inscripción usen el árbol nuevo:
 ## Riesgos
 
 - **Dos currículas a la vez.** Después de este cambio, Planes de Estudio muestra el árbol nuevo y Estudiantes sigue ofreciendo A/B/C viejos si alguien corrió `cargarPlanesSede`. Es el mismo riesgo de hoy. Hay que decirlo en la pantalla o en el manual hasta el tramo siguiente, para que no carguen el plan “de verdad” en un lado y anoten en el otro.
-- **`orientacion` en fichas ya existentes.** Vive en `estudiantes` y en el resumen, copiada del plan viejo. Este cambio no las toca. Si más adelante se borra el campo del plan nuevo, esas fichas conservan el texto histórico.
+- **`orientacion` en fichas ya existentes.** Vive en `estudiantes` y en el resumen, copiada del plan viejo. Este cambio no las toca. En el plan nuevo el campo sigue, aparte del nombre.
 - **Reglas de docente.** Sacar `areaAsignada` de `asignaturas` deja al docente sin lectura de este árbol hasta el tramo de la planilla. Es a propósito: hoy esa regla no tiene datos detrás.
 - **Landing y `PLANES_SEDE` desalineados** entre sí y con el ejemplo de Nahuel. Cualquier seed “para que se vea algo” volvería a congelar una de esas versiones. No se hace.
 - **Renombrar paths** (`niveles` → `anios`, `materias` → `asignaturas`) rompe documentos de prueba del emulador. No rompe producción mientras el PR no se despliegue. No incluir en el deploy de reglas un borrado de `planes` viejo.
 - **“Plan” significa dos cosas** (el plan de estudio y el plan/año de adentro). La pantalla tiene que decir “Plan de estudio” arriba y “Planes o años” en la sección, para que no se mezclen.
 
-## Checklist para aprobar
+## Futuro / fuera de alcance
 
-- [ ] D1. Orientación fuera del plan nuevo, sin campo opcional.
-- [ ] D2. Subcolección `anios`, rótulo “Planes o años”, nombre libre, sin código ni año numérico.
-- [ ] D3. Asignatura = área. Sin campo de área aparte y sin lista sugerida. El docente se asigna en un tramo posterior, por id.
-- [ ] D4. Código `n.m` opcional se queda.
-- [ ] D5. No incluir “se comparte entre niveles” / M8 en este cambio.
-- [ ] D6. No mover inscripción, planilla ni RAC en este cambio.
-- [ ] Sin seed, sin copiar el ejemplo A/B/C, sin desplegar.
+A futuro podría haber dos planes de estudio en simultáneo. Por ahora no aplica: no hace falta modelarlo y se deja como está.
+
+## Checklist
+
+- [x] D1. La orientación se mantiene, obligatoria, junto con nombre, validez nacional y resolución. El título es el nombre; la orientación se muestra como campo propio.
+- [x] D2. Subcolección `anios`, rótulo “Planes o años”, nombre libre, sin código ni año numérico.
+- [x] D3. Asignatura = área. Sin campo de área aparte y sin lista sugerida. El docente se asigna en un tramo posterior, por id.
+- [x] D4. Código `n.m` opcional se queda.
+- [x] D5. No incluir “se comparte entre niveles” / M8 en este cambio.
+- [x] D6. No mover inscripción, planilla ni RAC en este cambio.
+- [x] Sin seed, sin copiar el ejemplo A/B/C, sin desplegar.
