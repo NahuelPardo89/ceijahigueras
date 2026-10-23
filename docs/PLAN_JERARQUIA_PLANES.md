@@ -4,7 +4,7 @@ Nahuel aprobó este plan. La corrección del 23 de octubre de 2026 es que la **o
 
 Aclaración posterior: las notas y el resto de los datos que hay hoy son de prueba. No hay nada real. Se puede borrar, cambiar la lógica y la base sin cuidar compatibilidad ni migrar lo existente. El trabajo va por partes: esta etapa es solo Planes de Estudio. RAC, inscripción y planilla se ven después, cuando planes esté terminado.
 
-No cambia código, no siembra datos y no se despliega hasta que se ejecute en otro paso.
+Esta etapa ya está en el código de esta rama: dominio, servicio, reglas, pantalla y tests. No hay seed y no se despliega. El apartado «Qué hay hoy» describe el modelo anterior, el que se reemplazó.
 
 Fecha de relevamiento: 23 de octubre de 2026. Rama: `cursor/planes-de-estudio-1b42` (PR #6), apilada sobre `cursor/saneamiento-legado-b791`. La pantalla de este PR todavía no está en producción.
 
