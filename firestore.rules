@@ -2,6 +2,15 @@ rules_version = '2';
 // Sin Cloud Functions (plan Spark): estas reglas son el control de acceso.
 // Roles nuevos: admin, docente, lectura, pendiente.
 // Se siguen aceptando Administrador y Profesor para no dejar afuera las cuentas ya cargadas.
+//
+// planesEstudio/{planId}
+//   nombre, orientacion, resolucion, validezNacional: texto obligatorio
+//   activo, enUso: bool. creadoPor y fechaCreacion no cambian.
+//   anios/{anioId}: nombre, orden, enUso. En la pantalla: «Planes o años».
+//   modulos/{moduloId}: nombre, orden, enUso
+//   asignaturas/{asignaturaId}: nombre, orden, codigo (vacío o n.m), activo, enUso
+// Admin escribe. Lectura lee el árbol. El docente no lo lee hasta la etapa de la planilla.
+// Borrar solo si enUso no es true. La colección empieza vacía: nadie siembra planes.
 service cloud.firestore {
   match /databases/{database}/documents {
 
@@ -78,6 +87,81 @@ service cloud.firestore {
 
     function ensenaM8() {
       return exists(docentePath()) && docenteData().get('ensenaM8', false) == true;
+    }
+
+    function textoPlano(valor, max) {
+      return valor is string
+        && valor.size() > 0
+        && valor.size() <= max
+        && valor.matches('.*\\S.*');
+    }
+
+    function claveAreaValida(valor) {
+      return valor is string
+        && valor.size() > 0
+        && valor.size() <= 40
+        && valor.matches('[a-z0-9]+(-[a-z0-9]+)*');
+    }
+
+    function codigoMateriaValido(valor) {
+      return valor is string && (valor.size() == 0 || valor.matches('[0-9]{1,2}\\.[0-9]{1,2}'));
+    }
+
+    function ordenValido(valor) {
+      return valor is int && valor >= 1 && valor <= 99;
+    }
+
+    function enUsoNoRetrocede() {
+      return resource.data.enUso != true || request.resource.data.enUso == true;
+    }
+
+    function areaAsignada(area) {
+      return exists(docentePath())
+        && area in docenteData().get('areas', {})
+        && docenteData().areas[area] == true;
+    }
+
+    function planEstudioForma() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nombre', 'orientacion', 'resolucion', 'validezNacional', 'activo', 'enUso', 'creadoPor', 'fechaCreacion'])
+        && textoPlano(d.nombre, 160)
+        && textoPlano(d.orientacion, 160)
+        && textoPlano(d.resolucion, 160)
+        && textoPlano(d.validezNacional, 160)
+        && d.activo is bool
+        && d.enUso is bool
+        && d.creadoPor is string
+        && d.creadoPor.size() > 0
+        && d.creadoPor.size() <= 128
+        && d.fechaCreacion is string
+        && d.fechaCreacion.size() >= 20
+        && d.fechaCreacion.size() <= 40;
+    }
+
+    function anioEstudioValido() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nombre', 'orden', 'enUso'])
+        && textoPlano(d.nombre, 160)
+        && ordenValido(d.orden)
+        && d.enUso is bool;
+    }
+
+    function moduloEstudioValido() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nombre', 'orden', 'enUso'])
+        && textoPlano(d.nombre, 160)
+        && ordenValido(d.orden)
+        && d.enUso is bool;
+    }
+
+    function asignaturaEstudioValida() {
+      let d = request.resource.data;
+      return d.keys().hasOnly(['nombre', 'orden', 'codigo', 'activo', 'enUso'])
+        && textoPlano(d.nombre, 160)
+        && ordenValido(d.orden)
+        && codigoMateriaValido(d.codigo)
+        && d.activo is bool
+        && d.enUso is bool;
     }
 
     function racPath(racId) {
@@ -208,6 +292,41 @@ service cloud.firestore {
       match /espacios/{espacioId} {
         allow read: if esStaff();
         allow create, update, delete: if esAdmin();
+      }
+    }
+
+    // Currícula que carga el admin. Vacía hasta que alguien la escriba.
+    // `planes/{planId}` sigue legible para el RAC que ya apunta a un espacio.
+    // El docente no lee este árbol hasta la etapa de la planilla.
+    match /planesEstudio/{planId} {
+      allow read: if esAdmin() || esLectura();
+      allow create: if esAdmin() && planEstudioForma() && request.resource.data.creadoPor == request.auth.uid;
+      allow update: if esAdmin()
+        && planEstudioForma()
+        && request.resource.data.creadoPor == resource.data.creadoPor
+        && request.resource.data.fechaCreacion == resource.data.fechaCreacion
+        && enUsoNoRetrocede();
+      allow delete: if esAdmin() && resource.data.enUso != true;
+
+      match /anios/{anioId} {
+        allow read: if esAdmin() || esLectura();
+        allow create: if esAdmin() && anioEstudioValido();
+        allow update: if esAdmin() && anioEstudioValido() && enUsoNoRetrocede();
+        allow delete: if esAdmin() && resource.data.enUso != true;
+
+        match /modulos/{moduloId} {
+          allow read: if esAdmin() || esLectura();
+          allow create: if esAdmin() && moduloEstudioValido();
+          allow update: if esAdmin() && moduloEstudioValido() && enUsoNoRetrocede();
+          allow delete: if esAdmin() && resource.data.enUso != true;
+
+          match /asignaturas/{asignaturaId} {
+            allow read: if esAdmin() || esLectura();
+            allow create: if esAdmin() && asignaturaEstudioValida();
+            allow update: if esAdmin() && asignaturaEstudioValida() && enUsoNoRetrocede();
+            allow delete: if esAdmin() && resource.data.enUso != true;
+          }
+        }
       }
     }
 

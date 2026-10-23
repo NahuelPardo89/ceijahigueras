@@ -30,8 +30,12 @@ Teacher assignments live in `docentes/{uid}`, not on the user document. Keys loo
 |---|---|
 | `config/institucion` | Name, CUE, sede |
 | `ciclos/{anio}` | `abierto` or `cerrado` |
-| `planes/{planId}` | A/B/C, orientation, resolutions, version |
-| `planes/{planId}/espacios/{espacioId}` | Curricular space. M8 may be `compartidoM8` |
+| `planesEstudio/{planId}` | Admin-built plan: nombre (the title), orientación, validez nacional, resolución. Starts empty. No seed |
+| `planesEstudio/{planId}/anios/{anioId}` | A plan/año the admin names. Free nombre and orden. There is no separate nivel |
+| `planesEstudio/.../modulos/{moduloId}` | Module inside a plan/año |
+| `planesEstudio/.../asignaturas/{asignaturaId}` | Subject (also called área). Opaque id, optional code `n.m`. A later grade row should keep this id |
+| `planes/{planId}` | Older plan still read by RAC and the teacher sheet. The new screen does not seed it |
+| `planes/{planId}/espacios/{espacioId}` | Older space. Existing grade rows still use this id |
 | `estudiantes/{id}` | Name, masked DNI, plan, status. No full DNI or contact |
 | `estudiantes/{id}/privado/datos` | DNI, CUIL, contact, birth date, documentation. Admin only |
 | `dniIndex/{dni}` | One student per DNI. Create fails if it already exists |
@@ -47,7 +51,7 @@ Teacher assignments live in `docentes/{uid}`, not on the user document. Keys loo
 
 Closing a RAC marks anything not approved as `adeuda` and makes grades read-only. "Generar RAC del ciclo siguiente" opens a RAC on the destination plan and carries failed spaces as `Prev`.
 
-Versioned sede plans are in `src/domain/planesSede.ts` (Plan A ciclo básico, Planes B and C Economía y Administración). Arte y Cultura and Deportes are not invented; an admin can add them from the planes screen.
+Planes de Estudio starts empty. An admin types nombre, orientación, validez nacional and resolución. The title is the nombre; orientación is its own field. Then they add planes o años, modules and asignaturas by hand. There is no seed and no suggested área list. `src/domain/planesSede.ts` is not a seed for that screen. It still feeds only the older `planes` collection used by the RAC, the teacher sheet and the local emulator seed. Docentes do not read the new tree until the planilla stage.
 
 ## Legacy collections
 `students`, `grades`, `equivalences`, `subjects` and `studyPlans` are admin **read-only**. Nobody can create, update or delete them from the client. The app no longer ships the old screens or hooks (`StudentManagement`, `GradesManagement`, `SubjectManagement`, `StudyPlanManagement`, `BulkImportModal`, `useStudents`, `useGrades`, `useSubjects`, `useStudyPlans`, `useEquivalences`). `students` still holds DNI and contact, so teachers and lectura cannot read them.

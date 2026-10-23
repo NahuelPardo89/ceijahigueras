@@ -1,6 +1,10 @@
 import type { EspacioPlantilla, Institucion, Plan } from './types';
 
 /**
+ * Catálogo viejo de `planes/{id}/espacios`. Lo siguen usando el RAC,
+ * la planilla y el seed del emulador. La pantalla Planes de Estudio
+ * no lo lee ni lo siembra: esa currícula empieza vacía en `planesEstudio`.
+ *
  * Versión de la plantilla de planes de la sede.
  * Arte y Cultura y Deportes no se cargan: la normativa de esas orientaciones
  * quedó sin resolver y el administrador puede crearlas desde la pantalla de planes.
